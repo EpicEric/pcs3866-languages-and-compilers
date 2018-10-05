@@ -23,11 +23,11 @@ primitive FileEventEOF
 
 class FileEventLine
   let number: USize
-  let string: String
+  let string: String iso
 
-  new create(number': USize, string': String) =>
+  new create(number': USize, string': String iso) =>
     number = number'
-    string = string'
+    string = consume string'
 
 type FileEvent is (FileEventEOF | FileEventLine iso)
 
@@ -42,6 +42,9 @@ actor FileLineExtractPass
   be apply(file: File iso) =>
     var line_number: USize = 1
     for line in FileLines(consume file) do
-      callback(recover FileEventLine((line_number = line_number + 1), line) end)
+      callback(recover FileEventLine(
+        (line_number = line_number + 1),
+        consume line) 
+      end)
     end
     callback(FileEventEOF)

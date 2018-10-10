@@ -3,12 +3,14 @@ primitive CharacterTypeDigit
 primitive CharacterTypeSpecial
 primitive CharacterTypeDelimiter
 primitive CharacterTypeControl
+primitive CharacterTypeEOF
 type CharacterType is 
   ( CharacterTypeLetter
   | CharacterTypeDigit
   | CharacterTypeSpecial
   | CharacterTypeDelimiter
-  | CharacterTypeControl )
+  | CharacterTypeControl
+  | CharacterTypeEOF )
 
 type CharacterTypeUseful is
   ( CharacterTypeLetter
@@ -45,6 +47,9 @@ actor CharacterFilterPass
         for c in (consume array).values() do
           callback(this.classify(c)?)
         end
+        callback(recover CharacterEvent(0xA, CharacterTypeControl) end)
+      | FileEventEOF =>
+        callback(recover CharacterEvent(0x0, CharacterTypeEOF) end)
       end
     else
       coordinator.pass_error(
@@ -65,8 +70,6 @@ actor CharacterFilterPass
       or (character == 0x20)
     then
       recover CharacterEvent(character, CharacterTypeDelimiter) end
-    elseif (character == 0x0) then
-      recover CharacterEvent(character, CharacterTypeControl) end
     else
       error
     end

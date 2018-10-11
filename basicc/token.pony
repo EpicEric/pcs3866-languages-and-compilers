@@ -9,11 +9,11 @@ type TokenCategory is
   | TokenEOF )
 
 class TokenEvent
-  let data: Array[U8]
+  let data: Array[U8] iso
   let category: TokenCategory
 
-  new create(data': Array[U8], category': TokenCategory) =>
-    data = data'
+  new create(data': Array[U8] iso, category': TokenCategory) =>
+    data = consume data'
     category = category'
 
 actor TokenCategorizerPass
@@ -35,21 +35,35 @@ actor TokenCategorizerPass
     match char_type
     | CharacterTypeLetter =>
       match category
+      | None => None
       | TokenIdentifier => None
       else commit_token() end
       data.push(value)
-      category = TokenIdentifier
+      if category is None then category = TokenIdentifier end
     | CharacterTypeDigit =>
       match category
+      | None => None
       | TokenIdentifier => None
       | TokenNumber => None
       else commit_token() end
       data.push(value)
-      category = TokenNumber
+      if category is None then category = TokenNumber end
     | CharacterTypeSpecial =>
-      commit_token()
+      // Treat special tokens ["<="; ">="; "<>"]
+      match category
+      | None => None
+      | TokenSpecial =>
+        try
+          if (data.size() != 1) or not(
+            ((value == '=') and ((data(0)? == '<') or (data(0)? == '>'))) or
+            ((value == '>') and (data(0)? == '<')))
+          then
+            commit_token()
+          end
+        end
+      else commit_token() end
       data.push(value)
-      category = TokenSpecial
+      if category is None then category = TokenSpecial end
     | CharacterTypeEOF =>
       commit_token()
       category = TokenEOF
@@ -59,7 +73,7 @@ actor TokenCategorizerPass
   fun ref commit_token() =>
     match category
     | let category': TokenCategory =>
-      let data' = (data = recover Array[U8] end)
+      let data' = data = recover Array[U8] end
       callback(
         recover TokenEvent(consume data', category') end)
       category = None

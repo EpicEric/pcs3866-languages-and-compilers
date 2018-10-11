@@ -9,7 +9,7 @@ Program = BStatement { BStatement } int "END" .
 BStatement = int ( Assign | Read | Data | Print | Goto | If | For | Next | Dim | Def | Gosub | Return | Remark ) .
 Assign = "LET" Var "=" Exp .
 Var = letter digit | letter [ "(" Exp { "," Exp } ")" ] .
-Exp = { "+" | "-" } Eb { ( "+" | "-" | "*" | "/" | "" ) Eb } .
+Exp = { "+" | "-" } Eb { ( "+" | "-" | "*" | "/" | "^" ) Eb } .
 Eb = "(" Exp ")" | Num | Var | ( "FN" letter | Predef ) "(" Exp ")" .
 Predef = "SIN" | "COS" | "TAN" | "ATN" | "EXP" | "ABS" | "LOG" | "SQR" | "INT" | "RND" .
 Read = "READ" Var { "," Var } .

@@ -22,11 +22,23 @@ actor TestTokenCoordinator
       token_count = token_count + 1
       match token'.category
       | TokenIdentifier =>
-        env.out.print("     ID: " + String.from_iso_array((consume token').data))
+        let line = token'.line
+        let column = token'.column
+        env.out.print(
+          "(" + line.string() + ", " + column.string() +
+          ")      ID: " + String.from_iso_array((consume token').data))
       | TokenNumber =>
-        env.out.print(" Number: " + String.from_iso_array((consume token').data))
+        let line = token'.line
+        let column = token'.column
+        env.out.print(
+          "(" + line.string() + ", " + column.string() +
+          ")  Number: " + String.from_iso_array((consume token').data))
       | TokenSpecial =>
-        env.out.print("Special: " + String.from_iso_array((consume token').data))
+        let line = token'.line
+        let column = token'.column
+        env.out.print(
+          "(" + line.string() + ", " + column.string() +
+          ") Special: " + String.from_iso_array((consume token').data))
       end
     end
 

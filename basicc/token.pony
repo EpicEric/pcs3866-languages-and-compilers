@@ -8,10 +8,19 @@ type TokenCategory is
 
 class TokenEventWord
   let data: Array[U8] iso
+  let line: USize
+  let column: USize
   let category: TokenCategory
 
-  new create(data': Array[U8] iso, category': TokenCategory) =>
+  new create(
+    data': Array[U8] iso,
+    line': USize,
+    column': USize,
+    category': TokenCategory)
+  =>
     data = consume data'
+    line = line'
+    column = column'
     category = category'
 
 primitive TokenEOF
@@ -22,6 +31,8 @@ actor TokenCategorizerPass
   let coordinator: Coordinator
   let callback: {(TokenEvent)} val
   var data: Array[U8] iso = recover Array[U8] end
+  var line: USize = 0
+  var column: USize = 0
   var category: (TokenCategory | None) = None
 
   new create(
@@ -41,7 +52,11 @@ actor TokenCategorizerPass
       | TokenIdentifier => None
       else commit_token() end
       data.push(value)
-      if category is None then category = TokenIdentifier end
+      if category is None then
+        line = character.line
+        column = character.column
+        category = TokenIdentifier
+      end
     | CharacterTypeDigit =>
       match category
       | None => None
@@ -49,7 +64,11 @@ actor TokenCategorizerPass
       | TokenNumber => None
       else commit_token() end
       data.push(value)
-      if category is None then category = TokenNumber end
+      if category is None then
+        line = character.line
+        column = character.column
+        category = TokenNumber
+      end
     | CharacterTypeSpecial =>
       // Treat special tokens ["<="; ">="; "<>"]
       match category
@@ -65,7 +84,11 @@ actor TokenCategorizerPass
         end
       else commit_token() end
       data.push(value)
-      if category is None then category = TokenSpecial end
+      if category is None then
+        line = character.line
+        column = character.column
+        category = TokenSpecial
+      end
     | CharacterTypeEOF =>
       commit_token()
       callback(TokenEOF)
@@ -75,6 +98,7 @@ actor TokenCategorizerPass
     match category
     | let category': TokenCategory =>
       let data' = (data = recover Array[U8] end)
-      callback(recover TokenEventWord(consume data', category') end)
+      callback(recover TokenEventWord(
+        consume data', line, column, category') end)
       category = None
     end

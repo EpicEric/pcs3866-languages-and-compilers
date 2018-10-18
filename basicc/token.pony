@@ -1,14 +1,12 @@
 primitive TokenIdentifier
 primitive TokenNumber
 primitive TokenSpecial
-primitive TokenEOF
 type TokenCategory is 
   ( TokenIdentifier
   | TokenNumber
-  | TokenSpecial
-  | TokenEOF )
+  | TokenSpecial )
 
-class TokenEvent
+class TokenEventWord
   let data: Array[U8] iso
   let category: TokenCategory
 
@@ -16,15 +14,19 @@ class TokenEvent
     data = consume data'
     category = category'
 
+primitive TokenEOF
+
+type TokenEvent is ( TokenEventWord iso | TokenEOF )
+
 actor TokenCategorizerPass
   let coordinator: Coordinator
-  let callback: {(TokenEvent iso)} val
+  let callback: {(TokenEvent)} val
   var data: Array[U8] iso = recover Array[U8] end
   var category: (TokenCategory | None) = None
 
   new create(
     coordinator': Coordinator,
-    callback': {(TokenEvent iso)} val)
+    callback': {(TokenEvent)} val)
   =>
     coordinator = coordinator'
     callback = callback'
@@ -66,15 +68,13 @@ actor TokenCategorizerPass
       if category is None then category = TokenSpecial end
     | CharacterTypeEOF =>
       commit_token()
-      category = TokenEOF
-      commit_token()
+      callback(TokenEOF)
     else commit_token() end
 
   fun ref commit_token() =>
     match category
     | let category': TokenCategory =>
-      let data' = data = recover Array[U8] end
-      callback(
-        recover TokenEvent(consume data', category') end)
+      let data' = (data = recover Array[U8] end)
+      callback(recover TokenEventWord(consume data', category') end)
       category = None
     end

@@ -39,12 +39,14 @@ actor CharacterFilterPass
     callback = callback'
 
   be apply(line: FileEvent) =>
+    var count: USize = 0
     try
       match (consume line)
       | let l: FileEventLine iso =>
         line_number = l.number
         let array: Array[U8] iso = (consume l).string.iso_array()
         for c in (consume array).values() do
+          count = count + 1
           callback(this.classify(c)?)
         end
         callback(recover CharacterEvent(0xA, CharacterTypeControl) end)
@@ -53,7 +55,8 @@ actor CharacterFilterPass
       end
     else
       coordinator.pass_error(
-        this, "Invalid character on line " + line_number.string())
+        this, "Invalid character " + count.string() +
+              " on line " + line_number.string())
     end
 
   fun tag classify(character: U8): CharacterEvent iso^ ? =>

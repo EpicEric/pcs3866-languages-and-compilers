@@ -21,7 +21,7 @@ If = "IF" Exp ( ">=" | ">" | "<>" | "<" | "<=" | "=" ) Exp "THEN" int .
 For = "FOR" letter [ digit ] "=" Exp "TO" Exp [ "STEP" Exp ] .
 Next = "NEXT" letter [ digit ] .
 Dim = "DIM" letter "(" int { "," int } ")" { "," letter "(" int { "," int } ")" } .
-Def = "DEF FN" letter "(" letter [ digit ] ")" "=" Exp .
+Def = "DEF" "FN" letter "(" letter [ digit ] ")" "=" Exp .
 Gosub = "GOSUB" int .
 Return = "RETURN" .
 Remark = "REM" { Character } .

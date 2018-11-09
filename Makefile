@@ -1,7 +1,7 @@
 all: build/basicc
 
 build/basicc: build basicc/*.pony
-	ponyc -o build basicc
+	ponyc -o build basicc --debug
 
 build:
 	mkdir build

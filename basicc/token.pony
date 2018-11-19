@@ -30,6 +30,7 @@ type TokenEvent is ( TokenEventWord iso | TokenEOF )
 actor TokenCategorizerPass
   let coordinator: Coordinator
   let callback: {(TokenEvent)} val
+  var pass_error: Bool = false
   var data: Array[U8] iso = recover Array[U8] end
   var line: USize = 0
   var column: USize = 0
@@ -43,6 +44,7 @@ actor TokenCategorizerPass
     callback = callback'
 
   be apply(character: CharacterEvent iso) =>
+    if pass_error then return end
     let char_type: CharacterType = character.char_type
     let value: U8 = character.character
     match char_type

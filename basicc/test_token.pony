@@ -1,3 +1,5 @@
+use "format"
+
 actor TestTokenCoordinator
   let env: Env
   var token_count: USize = 0
@@ -20,28 +22,43 @@ actor TestTokenCoordinator
     | TokenEOF => None
     | let token': TokenEventWord iso =>
       token_count = token_count + 1
-      match token'.category
-      | TokenIdentifier =>
-        let line = token'.line
-        let column = token'.column
-        env.out.print(
-          "(" + line.string() + ", " + column.string() +
-          ")      ID: " + String.from_iso_array((consume token').data))
-      | TokenNumber =>
-        let line = token'.line
-        let column = token'.column
-        env.out.print(
-          "(" + line.string() + ", " + column.string() +
-          ")  Number: " + String.from_iso_array((consume token').data))
-      | TokenSpecial =>
-        let line = token'.line
-        let column = token'.column
-        env.out.print(
-          "(" + line.string() + ", " + column.string() +
-          ") Special: " + String.from_iso_array((consume token').data))
-      end
+      env.out.print(_format_token(consume token'))
     end
 
+  fun _format_token(token: TokenEventWord iso): String =>
+    let line = token.line
+    let column = token.column
+    let category =
+      match token.category
+        | TokenIdentifier => "ID"
+        | TokenNumber => "Number"
+        | TokenSpecial => "Special"
+      end
+    let token_data = String.from_iso_array((consume token).data)
+    "#"
+      + Format(token_count.string() where width = 4)
+      + " ("
+      + Format(line.string() where width = 3, align = AlignRight)
+      + ", "
+      + Format(column.string() where width = 3, align = AlignRight)
+      + ") "
+      + Format(category where width = 7, align = AlignRight)
+      + ": "
+      + (consume token_data)
+
   be pass_error(pass: Pass, err: String = "") =>
-    env.out.print("Error: " + err)
+    let pass_name = match pass
+    | let p': FileReaderPass =>
+      "File reader"
+    | let p': CharacterFilterPass =>
+      "Character filter"
+    | let p': TokenCategorizerPass =>
+      "Token categorizer"
+    else
+      "Unknown pass"
+    end
+    let error_string: String iso = recover String(
+      pass_name.size() + 8 + err.size()) end
+    error_string .> append(pass_name) .> append (" error: ") .> append(err)
+    env.out.print(consume error_string)
     env.exitcode(2)

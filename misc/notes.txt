@@ -1,0 +1,12 @@
+## tokenizer
+
+* id: [A-Z]+[A-Z0-9]+
+* number: [0-9]+
+* special: <=|>=|<>|[<>=!+-*/^...]
+
+## sintaxe
+
+* mapa de variáveis (nome: endereço)
+* mapa de funções (nome: endereço)
+* mapa de jumps+sub-rotinas (número: endereço)
+* lista de estados atuais possíveis

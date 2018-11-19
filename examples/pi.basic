@@ -1,3 +1,4 @@
+5 REM Imprimir os primeiros digitos de pi
 10 READ Q, R, T, K, N, L, I
 20 DATA 1, 0, 1, 1, 3, 3, 0
 30 LET A = 4 * Q + R - T
@@ -35,11 +36,11 @@
 
 600 REM Resultado da divisao inteira X2 = X0 // X1
 605 LET X2 = 0
-610 IF X0 < X1 THEN 650
+610 IF X0 >= X1 THEN 620
+615 RETURN
 620 LET X2 = X2 + 1
 630 LET X0 = X0 - X1
 640 GO TO 610
-650 RETURN
 
 900 PRINT ""
 905 END

@@ -15,12 +15,14 @@ type FileEvent is (FileEventEOF | FileEventLine iso)
 actor FileReaderPass
   let coordinator: Coordinator
   let callback: {(FileEvent)} val
+  var pass_error: Bool = false
 
   new create(coordinator': Coordinator, callback': {(FileEvent)} val) =>
     coordinator = coordinator'
     callback = callback'
 
   be apply(filename: String, auth: AmbientAuth) =>
+    if pass_error then return end
     let caps = recover val FileCaps .> set(FileRead) .> set(FileStat) end
     try
       let path: FilePath = FilePath(auth, filename, caps)?
@@ -34,6 +36,7 @@ actor FileReaderPass
       end
       callback(FileEventEOF)
     else
+      pass_error = true
       coordinator.pass_error(
         this,
         "Couldn't open file '" + filename + "'.")

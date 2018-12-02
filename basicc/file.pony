@@ -16,6 +16,7 @@ actor FileReaderPass
   let coordinator: Coordinator
   let callback: {(FileEvent)} val
   var pass_error: Bool = false
+  var finished: Bool = false
 
   new create(coordinator': Coordinator, callback': {(FileEvent)} val) =>
     coordinator = coordinator'
@@ -23,6 +24,11 @@ actor FileReaderPass
 
   be apply(filename: String, auth: AmbientAuth) =>
     if pass_error then return end
+    if finished then
+      coordinator.pass_error(this, "Cannot read more than one file")
+      pass_error = true
+      return
+    end
     let caps = recover val FileCaps .> set(FileRead) .> set(FileStat) end
     try
       let path: FilePath = FilePath(auth, filename, caps)?
@@ -35,6 +41,7 @@ actor FileReaderPass
         end)
       end
       callback(FileEventEOF)
+      finished = true
     else
       pass_error = true
       coordinator.pass_error(

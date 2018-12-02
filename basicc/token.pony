@@ -7,13 +7,13 @@ type TokenCategory is
   | TokenSpecial )
 
 class TokenEventWord
-  let data: Array[U8] iso
+  let data: String iso
   let line: USize
   let column: USize
   let category: TokenCategory
 
   new create(
-    data': Array[U8] iso,
+    data': String iso,
     line': USize,
     column': USize,
     category': TokenCategory)
@@ -31,6 +31,7 @@ actor TokenCategorizerPass
   let coordinator: Coordinator
   let callback: {(TokenEvent)} val
   var pass_error: Bool = false
+  var finished: Bool = false
   var data: Array[U8] iso = recover Array[U8] end
   var line: USize = 0
   var column: USize = 0
@@ -45,6 +46,11 @@ actor TokenCategorizerPass
 
   be apply(character: CharacterEvent iso) =>
     if pass_error then return end
+    if finished then
+      coordinator.pass_error(this, "Cannot tokenize characters after EOF")
+      pass_error = true
+      return
+    end
     let char_type: CharacterType = character.char_type
     let value: U8 = character.character
     match char_type
@@ -52,6 +58,8 @@ actor TokenCategorizerPass
       match category
       | None => None
       | TokenIdentifier => None
+      | TokenNumber =>
+        if (value != 'E') then commit_token() end
       else commit_token() end
       data.push(value)
       if category is None then
@@ -64,7 +72,15 @@ actor TokenCategorizerPass
       | None => None
       | TokenIdentifier => None
       | TokenNumber => None
-      else commit_token() end
+      | TokenSpecial =>
+        try
+          if
+            (data.size() == 1) and ((data(0)? == '+') or (data(0)? == '-'))
+          then
+            category = TokenNumber
+          else commit_token() end
+        end
+      end
       data.push(value)
       if category is None then
         line = character.line
@@ -84,6 +100,8 @@ actor TokenCategorizerPass
             commit_token()
           end
         end
+      | TokenNumber =>
+        if (value != '+') and (value != '-') then commit_token() end
       else commit_token() end
       data.push(value)
       if category is None then
@@ -94,6 +112,7 @@ actor TokenCategorizerPass
     | CharacterTypeEOF =>
       commit_token()
       callback(TokenEOF)
+      finished = true
     else commit_token() end
 
   fun ref commit_token() =>
@@ -101,6 +120,6 @@ actor TokenCategorizerPass
     | let category': TokenCategory =>
       let data' = (data = recover Array[U8] end)
       callback(recover TokenEventWord(
-        consume data', line, column, category') end)
+        String.from_iso_array(consume data'), line, column, category') end)
       category = None
     end

@@ -3,6 +3,7 @@ use "format"
 actor TestTokenCoordinator
   let env: Env
   var token_count: USize = 0
+  let token_list: Array[String] = Array[String]
 
   new create(env': Env, file: String) =>
     env = env'
@@ -19,10 +20,14 @@ actor TestTokenCoordinator
 
   be apply(token: TokenEvent) =>
     match (consume token)
-    | TokenEOF => None
+    | TokenEOF =>
+      env.out.print("Read " + token_count.string() + " token(s).")
+      for token' in token_list.values() do
+        env.out.print(token')
+      end
     | let token': TokenEventWord iso =>
       token_count = token_count + 1
-      env.out.print(_format_token(consume token'))
+      token_list.push(_format_token(consume token'))
     end
 
   fun _format_token(token: TokenEventWord iso): String =>
@@ -34,7 +39,6 @@ actor TestTokenCoordinator
         | TokenNumber => "Number"
         | TokenSpecial => "Special"
       end
-    let token_data = String.from_iso_array((consume token).data)
     "#"
       + Format(token_count.string() where width = 4)
       + " ("
@@ -44,7 +48,7 @@ actor TestTokenCoordinator
       + ") "
       + Format(category where width = 7, align = AlignRight)
       + ": "
-      + (consume token_data)
+      + (consume token).data
 
   be pass_error(pass: Pass, err: String = "") =>
     let pass_name = match pass

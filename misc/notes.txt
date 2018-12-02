@@ -10,3 +10,20 @@
 * mapa de funções (nome: endereço)
 * mapa de jumps+sub-rotinas (número: endereço)
 * lista de estados atuais possíveis
+
+## semântica
+
+* Assign: Escrever em variável global
+* Read: Armazenar fila de variáveis; unqueue enquanto read+data tiverem elementos
+* Data: Armazenar fila de valores; unqueue enquanto read+data tiverem elementos
+* Print: `tail call i32 @puts(...)`
+* Goto: `br label <dest>`
+* If: `br i1 <cond>, label <iftrue>, label <iffalse>`
+* For: inicializar variável de iteração
+* Next: adicionar step à variável, verificar condição de parada, e fazer branches necessários
+* Dim: Criar variáveis com sufixo dos índices
+* Def: Função global
+* Gosub: ? empilhar retorno (próximo label) na pilha e realizar branch incondicional
+* Return: ? desempilhar da pilha e fazer branch incondicional
+* Remark: `; texto do remark`
+* End: `ret i32 0`

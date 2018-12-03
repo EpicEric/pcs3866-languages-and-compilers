@@ -4,7 +4,7 @@ actor TestSyntaxCoordinator
   new create(env': Env, file: String) =>
     env = env'
     let parser = SyntaxParserPass(
-      this, {(token: TokenEvent)(coordinator: TestSyntaxCoordinator = this) =>
+      this, {(token: SyntaxEvent)(coordinator: TestSyntaxCoordinator = this) =>
         coordinator(consume token)} val) //FIXME
     let categorizer = TokenCategorizerPass(
       this, {(token: TokenEvent) =>
@@ -17,7 +17,8 @@ actor TestSyntaxCoordinator
         filter(consume line)} val)
     try reader(file, env.root as AmbientAuth) end
 
-  be apply(token: TokenEvent) => //FIXME
+  be apply(token: SyntaxEvent) =>
+    //TODO
     None
 
   be pass_error(pass: Pass, err: String = "") =>

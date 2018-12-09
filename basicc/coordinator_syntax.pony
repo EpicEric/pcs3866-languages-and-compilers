@@ -5,7 +5,7 @@ actor TestSyntaxCoordinator
     env = env'
     let parser = SyntaxParserPass(
       this, {(token: SyntaxEvent)(coordinator: TestSyntaxCoordinator = this) =>
-        coordinator(consume token)} val) //FIXME
+        coordinator(consume token)} val)
     let categorizer = TokenCategorizerPass(
       this, {(token: TokenEvent) =>
         parser(consume token)} val)
@@ -21,7 +21,7 @@ actor TestSyntaxCoordinator
     //TODO
     None
 
-  be pass_error(pass: Pass, err: String = "") =>
+  be pass_error(pass: Pass, err: String = "Unknown error") =>
     let pass_name = match pass
     | let p': FileReaderPass =>
       "File reader"

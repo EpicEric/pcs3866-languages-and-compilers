@@ -1,7 +1,7 @@
 primitive TokenIdentifier
 primitive TokenNumber
 primitive TokenSpecial
-type TokenCategory is 
+type TokenCategory is
   ( TokenIdentifier
   | TokenNumber
   | TokenSpecial )
@@ -26,6 +26,25 @@ class TokenEventWord
 primitive TokenEOF
 
 type TokenEvent is ( TokenEventWord iso | TokenEOF )
+
+primitive MatchStrings
+  fun apply(first: String, second: String): Bool =>
+    if first.size() != second.size() then return false end
+    var i: USize = 0
+    try
+      while i < first.size() do
+        let first_char: U8 =
+          if (first(i)? >= 0x61) and (first(i)? <= 0x7A) then
+            first(i)? - 0x20
+          else first(i)? end
+        let second_char: U8 =
+          if (second(i)? >= 0x61) and (second(i)? <= 0x7A) then
+            second(i)? - 0x20
+          else second(i)? end
+        if (first_char != second_char) then return false end
+      end
+    else return false end
+    true
 
 actor TokenCategorizerPass
   let coordinator: Coordinator
@@ -59,7 +78,7 @@ actor TokenCategorizerPass
       | None => None
       | TokenIdentifier => None
       | TokenNumber =>
-        if (value != 'E') then commit_token() end
+        if (value != 'E') and (value != 'e') then commit_token() end
       else commit_token() end
       data.push(value)
       if category is None then

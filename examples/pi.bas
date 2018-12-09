@@ -6,7 +6,7 @@
 50 IF A >= B THEN 300
 
 60 REM Encontrou digito
-65 PRINT N,
+65 PRINT INT(N),
 70 IF I <> 0 THEN 80
 72 PRINT ".",
 80 LET I = I + 1
@@ -34,7 +34,7 @@
 390 LET R = X2
 400 GOTO 30
 
-600 REM Resultado da divisao inteira X2 = X0 // X1
+600 REM Resultado da divisao inteira X2 = X0 / X1
 605 LET X2 = 0
 610 IF X0 >= X1 THEN 620
 615 RETURN

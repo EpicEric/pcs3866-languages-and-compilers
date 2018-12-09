@@ -50,7 +50,7 @@ actor TestTokenCoordinator
       + ": "
       + (consume token).data
 
-  be pass_error(pass: Pass, err: String = "") =>
+  be pass_error(pass: Pass, err: String = "Unknown error") =>
     let pass_name = match pass
     | let p': FileReaderPass =>
       "File reader"

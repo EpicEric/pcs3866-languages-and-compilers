@@ -4,7 +4,7 @@ primitive CharacterTypeSpecial
 primitive CharacterTypeDelimiter
 primitive CharacterTypeControl
 primitive CharacterTypeEOF
-type CharacterType is 
+type CharacterType is
   ( CharacterTypeLetter
   | CharacterTypeDigit
   | CharacterTypeSpecial
@@ -49,7 +49,7 @@ primitive CharacterClassifier
       CharacterTypeDelimiter
     else
       error
-    end    
+    end
 
 actor CharacterFilterPass
   let coordinator: Coordinator
@@ -93,8 +93,4 @@ actor CharacterFilterPass
     character: U8, line: USize, column: USize): CharacterEvent iso^ ?
   =>
     let char_type: CharacterType = CharacterClassifier(character)?
-    if (character >= 0x61) and (character <= 0x7A) then
-      recover CharacterEvent(character - 0x20, line, column, char_type) end
-    else
-      recover CharacterEvent(character, line, column, char_type) end
-    end 
+    recover CharacterEvent(character, line, column, char_type) end

@@ -5,4 +5,4 @@ type Pass is
   | SyntaxParserPass )
 
 interface tag Coordinator
-  be pass_error(pass: Pass, err: String = "")
+  be pass_error(pass: Pass, err: String = "Unknown error")

@@ -1,5 +1,3 @@
-all: build/basicc
-
 build/basicc: build basicc/*.pony
 	ponyc -o build basicc --debug
 

@@ -37,7 +37,7 @@ actor FileReaderPass
       for line in FileLines(file) do
         callback(recover FileEventLine(
           (line_number = line_number + 1),
-          consume line) 
+          consume line)
         end)
       end
       callback(FileEventEOF)

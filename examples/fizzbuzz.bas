@@ -1,5 +1,5 @@
 5 REM Algoritmo de fizzbuzz
-10 FOR N = 1 TO 101
+10 FOR N = 1 TO 100
 20 GOSUB 200
 30 IF N3 = 0 THEN 70
 40 IF N5 = 0 THEN 110

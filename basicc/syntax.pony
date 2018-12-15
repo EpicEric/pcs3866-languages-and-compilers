@@ -282,16 +282,48 @@ actor SyntaxParserPass
     coordinator.pass_error(this, "SyntaxParserPass is unimplemented")
     pass_error = true
 
-  fun ref syntax_read(variable: SyntaxExpressionVariable) ? =>
+  fun ref syntax_read(variable: SyntaxExpressionVariable iso) ? =>
     """
     Add variable to read_list and pop attributions if necessary.
     If variable is dimensioned, add multiple variables.
     """
-    if dim_map.contains(variable.name) then
-      error //FIXME Implementar read para variáveis dimensionadas
-    //TODO Reaproveitar objeto
-    else read_list.push(recover SyntaxExpressionVariable(variable.name) end) end
+    let name: String = variable.name
+    if dim_map.contains(name) then
+      // Multi-dimension variable
+      let index_array: Array[U32] = index_array.create()
+      let dimensions: Array[U32] = dim_map(name)?
+      // Create zero-valued index array
+      for _ in dimensions.keys() do
+        index_array.push(0)
+      end
+      // Loop until we reach the value of dimensions
+      repeat
+        // Add new read command
+        let index_array': Array[SyntaxExpression] iso =
+          _create_expression_array(index_array)
+        read_list.push(recover SyntaxExpressionVariable(
+          name,
+          consume index_array') end)
+        // Iterate dimensions
+        var i = index_array.size() - 1
+        index_array(i)? = index_array(i)? + 1
+        while index_array(i)? >= dimensions(i)? do
+          index_array(i)? = 0
+          i = i - 1
+          index_array(i)? = index_array(i)? + 1
+        end
+      until index_array(0)? == dimensions(0)? end
+    else read_list.push(consume variable) end
     _pop_read_data()?
+
+  fun _create_expression_array(arr: Array[U32]):
+    Array[SyntaxExpression] iso^
+  =>
+    let arr': Array[SyntaxExpression] iso = recover arr'.create() end
+    for value in arr.values() do
+      arr'.push(recover SyntaxExpressionNumber(F32.from[U32](value)) end)
+    end
+    consume arr'
 
   fun ref syntax_data(value: F32) ? =>
     """

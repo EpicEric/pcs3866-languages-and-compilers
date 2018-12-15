@@ -101,7 +101,13 @@ actor TokenCategorizerPass
       | TokenIdentifier => None
       | TokenNumber => None
       | TokenString => None
-      else commit_token() end
+      | TokenSpecial =>
+        try
+          if (data.size() == 1) and (data(0)? == '.') then
+            category = TokenNumber
+          else commit_token() end
+        end
+      end
       data.push(value)
       if category is None then
         line = character.line

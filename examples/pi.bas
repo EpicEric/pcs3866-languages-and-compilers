@@ -30,8 +30,8 @@
 350 LET T = T * L
 360 LET L = L + 2
 370 LET K = K + 1
-380 LET N = N0
-390 LET R = X2
+380 LET N = X2
+390 LET R = N0
 400 GOTO 30
 
 600 REM Resultado da divisao inteira X2 = X0 / X1

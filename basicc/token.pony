@@ -1,10 +1,12 @@
 primitive TokenIdentifier
 primitive TokenNumber
 primitive TokenSpecial
+primitive TokenString
 type TokenCategory is
   ( TokenIdentifier
   | TokenNumber
-  | TokenSpecial )
+  | TokenSpecial
+  | TokenString )
 
 class TokenEventWord
   let data: String iso
@@ -55,6 +57,8 @@ actor TokenCategorizerPass
   var line: USize = 0
   var column: USize = 0
   var category: (TokenCategory | None) = None
+  var number_has_exponent: Bool = false
+  var number_has_decimals: Bool = false
 
   new create(
     coordinator': Coordinator,
@@ -77,8 +81,13 @@ actor TokenCategorizerPass
       match category
       | None => None
       | TokenIdentifier => None
+      | TokenString => None
       | TokenNumber =>
-        if (value != 'E') and (value != 'e') then commit_token() end
+        if ((value != 'E') and (value != 'e')) or (number_has_exponent) then
+          commit_token()
+        else
+          number_has_exponent = true
+        end
       else commit_token() end
       data.push(value)
       if category is None then
@@ -91,15 +100,8 @@ actor TokenCategorizerPass
       | None => None
       | TokenIdentifier => None
       | TokenNumber => None
-      | TokenSpecial =>
-        try
-          if
-            (data.size() == 1) and ((data(0)? == '+') or (data(0)? == '-'))
-          then
-            category = TokenNumber
-          else commit_token() end
-        end
-      end
+      | TokenString => None
+      else commit_token() end
       data.push(value)
       if category is None then
         line = character.line
@@ -120,19 +122,42 @@ actor TokenCategorizerPass
           end
         end
       | TokenNumber =>
-        if (value != '+') and (value != '-') then commit_token() end
+        try
+          if
+            ((value != '+') and (value != '-')) or ((data(data.size())? != 'e')
+            and (data(data.size())? != 'E'))
+          then
+            if (value != '.') or number_has_decimals or number_has_exponent then
+              commit_token()
+            else
+              number_has_decimals = true
+            end
+          end
+        end
+      | TokenString =>
+        if value == '"' then
+          data.push(value)
+          commit_token()
+          return
+        end
       else commit_token() end
       data.push(value)
       if category is None then
         line = character.line
         column = character.column
-        category = TokenSpecial
+        if value == '"' then
+          category = TokenString
+        else
+          category = TokenSpecial
+        end
       end
     | CharacterTypeEOF =>
       commit_token()
       callback(TokenEOF)
       finished = true
-    else commit_token() end
+    else
+      if category is TokenString then data.push(value) else commit_token() end
+    end
 
   fun ref commit_token() =>
     match category
@@ -142,3 +167,5 @@ actor TokenCategorizerPass
         String.from_iso_array(consume data'), line, column, category') end)
       category = None
     end
+    number_has_exponent = false
+    number_has_decimals = false

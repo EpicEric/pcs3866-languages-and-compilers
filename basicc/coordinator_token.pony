@@ -38,6 +38,7 @@ actor TestTokenCoordinator
         | TokenIdentifier => "ID"
         | TokenNumber => "Number"
         | TokenSpecial => "Special"
+        | TokenString => "String"
       end
     "#"
       + Format(token_count.string() where width = 4)

@@ -120,6 +120,10 @@ class ParserStructuredAutomaton
   let automaton: Array[(AutomatonMachine, USize)] = automaton.create()
   var last_label: U32 = -1
 
+  // Var
+  var var_name: String = ""
+  var var_index: Array[SyntaxExpression] iso = recover var_index.create() end
+
   // Exp
   let exp_list: Array[SyntaxExpression iso] = exp_list.create()
 
@@ -237,8 +241,7 @@ class ParserStructuredAutomaton
         | MatchStrings(token'.data, "LET") =>
           automaton.push((AutomatonAssign, 1))
         | MatchStrings(token'.data, "READ") =>
-          automaton.push((AutomatonRead, 2))
-          automaton.push((AutomatonVar, 0))
+          automaton.push((AutomatonRead, 1))
         | MatchStrings(token'.data, "DATA") =>
           automaton.push((AutomatonData, 1))
         | MatchStrings(token'.data, "PRINT") =>
@@ -269,19 +272,92 @@ class ParserStructuredAutomaton
           _invalid_token(state._1, state._2, token')?
         end
 
+      // Var
+      | (AutomatonVar, 0) =>
+        _expect_token_category(token', TokenIdentifier)?
+        var_name = token'.data
+        match token'.data.size()
+        | 1 =>
+          if not(_is_letter(token'.data(0)?)) then
+            _invalid_token(state._1, state._2, token')?
+          else
+            automaton.push((AutomatonVar, 1))
+          end
+        | 2 =>
+          if
+            not(_is_letter(token'.data(0)?)) or not(_is_digit(token'.data(1)?))
+          then
+            _invalid_token(state._1, state._2, token')?
+          else
+            automaton.push((AutomatonVar, 4))
+          end
+        else _invalid_token(state._1, state._2, token')? end
+      | (AutomatonVar, 1) =>
+        if MatchStrings(token'.data, "(") then
+          _expect_token_category(token', TokenSpecial)?
+          automaton.push((AutomatonVar, 3))
+          automaton.push((AutomatonExp, 0))
+        else
+          let name: String = (var_name = "")
+          let index: Array[SyntaxExpression] iso =
+            (var_index = recover var_index.create() end)
+          exp_list.push(recover SyntaxExpressionVariable(
+            name,
+            consume index) end)
+          this.apply(token')?
+        end
+      | (AutomatonVar, 3) =>
+        var_index.push(exp_list.pop()?)
+        _expect_token_category(token', TokenIdentifier)?
+        match true
+        | MatchStrings(token'.data, ",") =>
+          automaton.push((AutomatonVar, 3))
+          automaton.push((AutomatonExp, 0))
+        | MatchStrings(token'.data, ")") =>
+          automaton.push((AutomatonVar, 4))
+        else _invalid_token(state._1, state._2, token')? end
+      | (AutomatonVar, 4) =>
+        let name: String = (var_name = "")
+        let index: Array[SyntaxExpression] iso =
+          (var_index = recover var_index.create() end)
+        exp_list.push(recover SyntaxExpressionVariable(
+          name,
+          consume index) end)
+        this.apply(token')?
+
       // Read
+      | (AutomatonRead, 1) =>
+        automaton.push((AutomatonRead, 2))
+        automaton.push((AutomatonVar, 0))
+        this.apply(token')?
       | (AutomatonRead, 2) =>
         if MatchStrings(token'.data, ",") then
           _expect_token_category(token', TokenSpecial)?
           automaton.push((AutomatonRead, 2))
           automaton.push((AutomatonVar, 0))
         else this.apply(token')? end
+        let exp: SyntaxExpression iso = exp_list.pop()?
+        match (consume exp)
+        | let variable: SyntaxExpressionVariable iso =>
+          pass.syntax_read(consume variable)?
+        else
+          _pass_error("Expression is not variable", token'.line, token'.column)?
+        end
 
       // For
       | (AutomatonFor, 1) =>
         automaton.push((AutomatonFor, 2))
         _expect_token_category(token', TokenIdentifier)?
         for_variable = token'.data
+        // Variable should be letter [ digit ]
+        if
+          (for_variable.size() > 2)
+            or (not(_is_letter(for_variable(0)?)))
+            or ((for_variable.size() == 2)
+              and not(_is_letter(for_variable(1)?)))
+        then
+          _invalid_token(state._1, state._2, token')?
+        end
         if pass.for_map.contains(for_variable) then
           _pass_error(
             "Cannot use variable '"
@@ -446,3 +522,13 @@ class ParserStructuredAutomaton
         + "' state "
         + state.string(),
       token.line, token.column)?
+
+  fun _is_letter(character: U8): Bool =>
+    try
+      CharacterClassifier(character)? is CharacterTypeLetter
+    else false end
+
+  fun _is_digit(character: U8): Bool =>
+    try
+      CharacterClassifier(character)? is CharacterTypeDigit
+    else false end

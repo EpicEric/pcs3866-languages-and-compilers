@@ -21,10 +21,12 @@ actor TestSyntaxCoordinator
     match consume token
     | SyntaxEOF =>
       env.out.print("Syntax is ok")
-    | let label: SyntaxLabel iso =>
-      env.out.print("Label: " + (consume label).label.string())
-    | let remark: SyntaxRemark iso =>
-      env.out.print("Remark: " + (consume remark).remark)
+    | let label: SyntaxLabel val =>
+      env.out.print("Label: " + label.label.string())
+    | let remark: SyntaxRemark val =>
+      env.out.print("Remark: " + remark.remark)
+    | let attribution: SyntaxAttribution val =>
+      env.out.print("Attribution: " + attribution.variable.name + " = //TODO")
     // else // TODO
     end
 

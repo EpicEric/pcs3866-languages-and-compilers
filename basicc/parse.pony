@@ -127,6 +127,10 @@ class ParserStructuredAutomaton
   // Exp
   let exp_list: Array[SyntaxExpression iso] = exp_list.create()
 
+  // Data
+  var data_sign: String = "+"
+  var data_number: F32 = 0
+
   // For
   var for_variable: String = ""
   var for_max: SyntaxExpression iso = recover SyntaxExpressionNumber(1) end
@@ -331,11 +335,6 @@ class ParserStructuredAutomaton
         automaton.push((AutomatonVar, 0))
         this.apply(token')?
       | (AutomatonRead, 2) =>
-        if MatchStrings(token'.data, ",") then
-          _expect_token_category(token', TokenSpecial)?
-          automaton.push((AutomatonRead, 2))
-          automaton.push((AutomatonVar, 0))
-        else this.apply(token')? end
         let exp: SyntaxExpression iso = exp_list.pop()?
         match (consume exp)
         | let variable: SyntaxExpressionVariable iso =>
@@ -343,6 +342,38 @@ class ParserStructuredAutomaton
         else
           _pass_error("Expression is not variable", token'.line, token'.column)?
         end
+        if MatchStrings(token'.data, ",") then
+          _expect_token_category(token', TokenSpecial)?
+          automaton.push((AutomatonRead, 2))
+          automaton.push((AutomatonVar, 0))
+        else this.apply(token')? end
+
+      // Data
+      | (AutomatonData, 1) =>
+        match true
+        | MatchStrings(token'.data, "+") =>
+          automaton.push((AutomatonData, 2))
+        | MatchStrings(token'.data, "-") =>
+          automaton.push((AutomatonData, 2))
+        else
+          _expect_token_category(token', TokenNumber)?
+          data_number = _parse_float(token')?
+          automaton.push((AutomatonData, 3))
+        end
+      | (AutomatonData, 2) =>
+        _expect_token_category(token', TokenNumber)?
+        data_number = _parse_float(token')?
+        automaton.push((AutomatonData, 3))
+      | (AutomatonData, 3) =>
+        pass.syntax_data(
+          if MatchStrings(data_sign, "+") then
+            -data_number
+          else data_number end)?
+        data_sign = "+"
+        if MatchStrings(token'.data, ",") then
+          _expect_token_category(token', TokenSpecial)?
+          automaton.push((AutomatonData, 1))
+        else this.apply(token')? end
 
       // For
       | (AutomatonFor, 1) =>
@@ -532,3 +563,17 @@ class ParserStructuredAutomaton
     try
       CharacterClassifier(character)? is CharacterTypeDigit
     else false end
+
+  fun _parse_float(token: TokenEventWord val): F32 ? =>
+    let float = token.data.f32()
+    if
+      (float == 0)
+        and (not(MatchStrings(token.data, "0")))
+        and (not(MatchStrings(token.data, ".0")))
+        and (not(MatchStrings(token.data, "0.0")))
+    then _pass_error(
+      "Could not parse '" + token.data + "' as float. If using a zero value, "
+        + "change '" + token.data + "' to '0' in your code.",
+      token.line,
+      token.column)? end
+    float

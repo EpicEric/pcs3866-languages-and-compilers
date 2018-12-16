@@ -120,6 +120,10 @@ class ParserStructuredAutomaton
   let automaton: Array[(AutomatonMachine, USize)] = automaton.create()
   var last_label: U32 = -1
 
+  // Assign
+  var assign_var: SyntaxExpressionVariable iso =
+    recover SyntaxExpressionVariable("") end
+
   // Var
   var var_name: String = ""
   var var_index: Array[SyntaxExpression] iso = recover var_index.create() end
@@ -275,6 +279,27 @@ class ParserStructuredAutomaton
         else
           _invalid_token(state._1, state._2, token')?
         end
+
+      // Assign
+      | (AutomatonAssign, 1) =>
+        automaton.push((AutomatonAssign, 2))
+        automaton.push((AutomatonVar, 0))
+        this.apply(token')?
+      | (AutomatonAssign, 2) =>
+        _expect_token_category(token', TokenSpecial)?
+        if not MatchStrings(token'.data, "=") then
+          _invalid_token(state._1, state._2, token')?
+        end
+        assign_var = (exp_list.pop()?) as SyntaxExpressionVariable iso^
+        automaton.push((AutomatonAssign, 4))
+        automaton.push((AutomatonExp, 0))
+      | (AutomatonAssign, 4) =>
+        let leftside: SyntaxExpressionVariable iso =
+          (assign_var = recover assign_var.create("") end)
+        let rightside: SyntaxExpression iso = exp_list.pop()?
+        pass.callback(recover SyntaxAttribution(
+          consume leftside, consume rightside) end)
+        this.apply(token')?
 
       // Var
       | (AutomatonVar, 0) =>

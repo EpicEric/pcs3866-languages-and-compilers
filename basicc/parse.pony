@@ -120,6 +120,14 @@ class ParserStructuredAutomaton
   let automaton: Array[(AutomatonMachine, USize)] = automaton.create()
   var last_label: U32 = -1
 
+  // Exp
+  let exp_list: Array[SyntaxExpression iso] = exp_list.create()
+
+  // For
+  var for_variable: String = ""
+  var for_max: SyntaxExpression iso = recover SyntaxExpressionNumber(1) end
+  var for_step: SyntaxExpression iso = recover SyntaxExpressionNumber(1) end
+
   // Remark
   var remark_list: Array[String] = remark_list.create()
 
@@ -196,7 +204,7 @@ class ParserStructuredAutomaton
         | MatchStrings(token'.data, "REM") =>
           automaton.push((AutomatonRemark, 1))
         else
-          _invalid_token(AutomatonProgram, 1, token')?
+          _invalid_token(state._1, state._2, token')?
         end
       | (AutomatonProgram, 2) =>
         _expect_token_category(token', TokenNumber)?
@@ -257,8 +265,88 @@ class ParserStructuredAutomaton
         | MatchStrings(token'.data, "END") =>
           automaton.push((AutomatonProgram, 4))
         else
-          _invalid_token(AutomatonProgram, 1, token')?
+          _invalid_token(state._1, state._2, token')?
         end
+
+      // For
+      | (AutomatonFor, 1) =>
+        automaton.push((AutomatonFor, 2))
+        _expect_token_category(token', TokenIdentifier)?
+        for_variable = token'.data
+        if pass.for_map.contains(for_variable) then
+          _pass_error(
+            "Cannot use variable '"
+              + for_variable
+              + "' in nested loops",
+            token'.line, token'.column)?
+        end
+      | (AutomatonFor, 2) =>
+        automaton.push((AutomatonFor, 4))
+        _expect_token_category(token', TokenSpecial)?
+        if not MatchStrings(token'.data, "=") then
+          _invalid_token(state._1, state._2, token')?
+        end
+      | (AutomatonFor, 4) =>
+        automaton.push((AutomatonFor, 5))
+        automaton.push((AutomatonExp, 0))
+        this.apply(token')?
+      | (AutomatonFor, 5) =>
+        automaton.push((AutomatonFor, 7))
+        automaton.push((AutomatonExp, 0))
+        _expect_token_category(token', TokenIdentifier)?
+        if not MatchStrings(token'.data, "TO") then
+          _invalid_token(state._1, state._2, token')?
+        end
+        let exp: SyntaxExpression iso = try exp_list.pop()? else error end
+        pass.callback(recover SyntaxAttribution(
+          recover SyntaxExpressionVariable(for_variable) end,
+          consume exp) end)
+      | (AutomatonFor, 7) =>
+        let exp: SyntaxExpression iso = try exp_list.pop()? else error end
+        for_max = consume exp
+        if MatchStrings(token'.data, "STEP") then
+          automaton.push((AutomatonFor, 9))
+          automaton.push((AutomatonExp, 0))
+          _expect_token_category(token', TokenIdentifier)?
+        else
+          _expect_token_category(token', TokenNumber)?
+          let label: U32 = try
+            token'.data.u32()?
+          else
+            _pass_error(
+              "Label '"
+                + token'.data
+                + "' is not an integer",
+              token'.line, token'.column)?
+            error
+          end
+          pass.syntax_for(
+            for_variable,
+            label,
+            for_max = recover SyntaxExpressionNumber(1) end,
+            for_step = recover SyntaxExpressionNumber(1) end)?
+          this.apply(token')?
+        end
+      | (AutomatonFor, 9) =>
+        let exp: SyntaxExpression iso = try exp_list.pop()? else error end
+        for_step = consume exp
+        _expect_token_category(token', TokenNumber)?
+        let label: U32 = try
+          token'.data.u32()?
+        else
+          _pass_error(
+            "Label '"
+              + token'.data
+              + "' is not an integer",
+            token'.line, token'.column)?
+          error
+        end
+        pass.syntax_for(
+          for_variable,
+          label,
+          for_max = recover SyntaxExpressionNumber(1) end,
+          for_step = recover SyntaxExpressionNumber(1) end)?
+        this.apply(token')?
 
       // Remark
       | (AutomatonRemark, 1) =>

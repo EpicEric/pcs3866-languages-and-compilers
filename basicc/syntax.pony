@@ -297,6 +297,7 @@ actor SyntaxParserPass
       else
         coordinator.pass_error(this, "Unexpected structured automaton")
         pass_error = true
+        return
       end
     else
       pass_error = true
@@ -394,7 +395,7 @@ actor SyntaxParserPass
     EscapeLoop:
       ...
     """
-    let for_data = for_map(variable)?
+    (let _, let for_data) = for_map.remove(variable)?
     let return_label: U32 = for_data._1
     let max_exp: SyntaxExpression iso = recover iso for_data._2 end
     let step_exp: SyntaxExpression iso = recover iso for_data._3 end

@@ -237,7 +237,8 @@ class ParserStructuredAutomaton
         | MatchStrings(token'.data, "LET") =>
           automaton.push((AutomatonAssign, 1))
         | MatchStrings(token'.data, "READ") =>
-          automaton.push((AutomatonRead, 1))
+          automaton.push((AutomatonRead, 2))
+          automaton.push((AutomatonVar, 0))
         | MatchStrings(token'.data, "DATA") =>
           automaton.push((AutomatonData, 1))
         | MatchStrings(token'.data, "PRINT") =>
@@ -267,6 +268,14 @@ class ParserStructuredAutomaton
         else
           _invalid_token(state._1, state._2, token')?
         end
+
+      // Read
+      | (AutomatonRead, 2) =>
+        if MatchStrings(token'.data, ",") then
+          _expect_token_category(token', TokenSpecial)?
+          automaton.push((AutomatonRead, 2))
+          automaton.push((AutomatonVar, 0))
+        else this.apply(token')? end
 
       // For
       | (AutomatonFor, 1) =>

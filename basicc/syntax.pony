@@ -310,30 +310,36 @@ actor SyntaxParserPass
     """
     let name: String = variable.name
     if dim_map.contains(name) then
-      // Multi-dimension variable
-      let index_array: Array[U32] = index_array.create()
-      let dimensions: Array[U32] = dim_map(name)?
-      // Create zero-valued index array
-      for _ in dimensions.keys() do
-        index_array.push(0)
-      end
-      // Loop until we reach the value of dimensions
-      repeat
-        // Add new read command
-        let index_array': Array[SyntaxExpression] iso =
-          _create_expression_array(index_array)
-        read_list.push(recover SyntaxExpressionVariable(
-          name,
-          consume index_array') end)
-        // Iterate dimensions
-        var i = index_array.size() - 1
-        index_array(i)? = index_array(i)? + 1
-        while index_array(i)? >= dimensions(i)? do
-          index_array(i)? = 0
-          i = i - 1
-          index_array(i)? = index_array(i)? + 1
+      match variable.index
+      | None =>
+        // Multi-dimension variable
+        let index_array: Array[U32] = index_array.create()
+        let dimensions: Array[U32] = dim_map(name)?
+        // Create zero-valued index array
+        for _ in dimensions.keys() do
+          index_array.push(0)
         end
-      until index_array(0)? == dimensions(0)? end
+        // Loop until we reach the value of dimensions
+        repeat
+          // Add new read command
+          let index_array': Array[SyntaxExpression] iso =
+            _create_expression_array(index_array)
+          read_list.push(recover SyntaxExpressionVariable(
+            name,
+            consume index_array') end)
+          // Iterate dimensions
+          var i = index_array.size() - 1
+          index_array(i)? = index_array(i)? + 1
+          while index_array(i)? >= dimensions(i)? do
+            index_array(i)? = 0
+            i = i - 1
+            index_array(i)? = index_array(i)? + 1
+          end
+        until index_array(0)? == dimensions(0)? end
+      else
+        // TODO: Verificar dimensões
+        read_list.push(consume variable)
+      end
     else read_list.push(consume variable) end
     _pop_read_data()?
 

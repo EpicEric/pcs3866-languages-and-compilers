@@ -120,18 +120,21 @@ class ParserStructuredAutomaton
   let automaton: Array[(AutomatonMachine, USize)] = automaton.create()
   var last_label: U32 = -1
 
+  // Remark
+  var remark_list: Array[String] = remark_list.create()
+
   new create(pass': SyntaxParserPass ref) =>
     pass = pass'
     automaton.push((AutomatonProgram, 0))
 
-  fun ref apply(token: TokenEvent) ? =>
+  fun ref apply(token: TokenEvent val) ? =>
     let state = try
       automaton.pop()?
     else
       _pass_error("Structured automaton stack is empty")?
       error
     end
-    match consume token
+    match token
     | let token': TokenEventWord val =>
       match state
 
@@ -160,6 +163,41 @@ class ParserStructuredAutomaton
         last_label = label
         pass.callback(recover SyntaxLabel(label) end)
         automaton.push((AutomatonProgram, 1))
+      | (AutomatonProgram, 1) =>
+        automaton.push((AutomatonProgram, 2))
+        _expect_token_category(token', TokenIdentifier)?
+        match true
+        | MatchStrings(token'.data, "LET") =>
+          automaton.push((AutomatonAssign, 1))
+        | MatchStrings(token'.data, "READ") =>
+          automaton.push((AutomatonRead, 1))
+        | MatchStrings(token'.data, "DATA") =>
+          automaton.push((AutomatonData, 1))
+        | MatchStrings(token'.data, "PRINT") =>
+          automaton.push((AutomatonPrint, 1))
+        | MatchStrings(token'.data, "GO") =>
+          automaton.push((AutomatonGoto, 1))
+        | MatchStrings(token'.data, "GOTO") =>
+          automaton.push((AutomatonGoto, 2))
+        | MatchStrings(token'.data, "IF") =>
+          automaton.push((AutomatonIf, 1))
+        | MatchStrings(token'.data, "FOR") =>
+          automaton.push((AutomatonFor, 1))
+        | MatchStrings(token'.data, "NEXT") =>
+          automaton.push((AutomatonNext, 1))
+        | MatchStrings(token'.data, "DIM") =>
+          automaton.push((AutomatonDim, 1))
+        | MatchStrings(token'.data, "DEF") =>
+          automaton.push((AutomatonDef, 1))
+        | MatchStrings(token'.data, "GOSUB") =>
+          automaton.push((AutomatonGosub, 1))
+        | MatchStrings(token'.data, "RETURN") =>
+          automaton.push((AutomatonReturn, 1))
+        | MatchStrings(token'.data, "REM") =>
+          automaton.push((AutomatonRemark, 1))
+        else
+          _invalid_token(AutomatonProgram, 1, token')?
+        end
       | (AutomatonProgram, 2) =>
         _expect_token_category(token', TokenNumber)?
         let label: U32 = try
@@ -184,6 +222,60 @@ class ParserStructuredAutomaton
         last_label = label
         pass.callback(recover SyntaxLabel(label) end)
         automaton.push((AutomatonProgram, 3))
+      | (AutomatonProgram, 3) =>
+        automaton.push((AutomatonProgram, 2))
+        _expect_token_category(token', TokenIdentifier)?
+        match true
+        | MatchStrings(token'.data, "LET") =>
+          automaton.push((AutomatonAssign, 1))
+        | MatchStrings(token'.data, "READ") =>
+          automaton.push((AutomatonRead, 1))
+        | MatchStrings(token'.data, "DATA") =>
+          automaton.push((AutomatonData, 1))
+        | MatchStrings(token'.data, "PRINT") =>
+          automaton.push((AutomatonPrint, 1))
+        | MatchStrings(token'.data, "GO") =>
+          automaton.push((AutomatonGoto, 1))
+        | MatchStrings(token'.data, "GOTO") =>
+          automaton.push((AutomatonGoto, 2))
+        | MatchStrings(token'.data, "IF") =>
+          automaton.push((AutomatonIf, 1))
+        | MatchStrings(token'.data, "FOR") =>
+          automaton.push((AutomatonFor, 1))
+        | MatchStrings(token'.data, "NEXT") =>
+          automaton.push((AutomatonNext, 1))
+        | MatchStrings(token'.data, "DIM") =>
+          automaton.push((AutomatonDim, 1))
+        | MatchStrings(token'.data, "DEF") =>
+          automaton.push((AutomatonDef, 1))
+        | MatchStrings(token'.data, "GOSUB") =>
+          automaton.push((AutomatonGosub, 1))
+        | MatchStrings(token'.data, "RETURN") =>
+          automaton.push((AutomatonReturn, 1))
+        | MatchStrings(token'.data, "REM") =>
+          automaton.push((AutomatonRemark, 1))
+        | MatchStrings(token'.data, "END") =>
+          automaton.push((AutomatonProgram, 4))
+        else
+          _invalid_token(AutomatonProgram, 1, token')?
+        end
+
+      // Remark
+      | (AutomatonRemark, 1) =>
+        match token'.category
+        | TokenNumber =>
+          // Remover espaço separador se houver
+          try remark_list.pop()? end
+          let remark_string: String iso = String.join(
+            (remark_list = remark_list.create()).values())
+          pass.callback(recover SyntaxRemark(consume remark_string) end)
+          // Exit to program machine
+          this.apply(token')?
+        else
+          remark_list.push(token'.data)
+          remark_list.push(" ")
+          automaton.push((AutomatonRemark, 1))
+        end
 
       // Unknown automaton + state
       else
@@ -220,7 +312,7 @@ class ParserStructuredAutomaton
           + line.string()
           + " column "
           + column.string()
-          + ":"
+          + ": "
           + message)
     else
       pass.coordinator.pass_error(pass, message)
@@ -237,6 +329,8 @@ class ParserStructuredAutomaton
           + token.category.string()
           + "' for token '"
           + token.data
+          + "'; expected category '"
+          + category.string()
           + "'",
         token.line, token.column)?
       error

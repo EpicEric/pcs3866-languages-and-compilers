@@ -18,8 +18,15 @@ actor TestSyntaxCoordinator
     try reader(file, env.root as AmbientAuth) end
 
   be apply(token: SyntaxEvent) =>
-    //TODO
-    None
+    match consume token
+    | SyntaxEOF =>
+      env.out.print("Syntax is ok")
+    | let label: SyntaxLabel iso =>
+      env.out.print("Label: " + (consume label).label.string())
+    | let remark: SyntaxRemark iso =>
+      env.out.print("Remark: " + (consume remark).remark)
+    // else // TODO
+    end
 
   be pass_error(pass: Pass, err: String = "Unknown error") =>
     let pass_name = match pass

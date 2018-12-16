@@ -48,7 +48,7 @@ class SyntaxUserDefinedFunctionCall // DEF FNx
   new create(name': String) =>
     name = name'
 
-type SyntaxUnaryOperator is
+type SyntaxUnaryOperatorPrimitive is
   ( SyntaxNegation
   | SyntaxSine
   | SyntaxCosine
@@ -59,8 +59,11 @@ type SyntaxUnaryOperator is
   | SyntaxLogarithm
   | SyntaxSquareRoot
   | SyntaxInteger
-  | SyntaxRandom
-  | SyntaxUserDefinedFunctionCall )
+  | SyntaxRandom )
+
+type SyntaxUnaryOperator is
+  ( SyntaxUnaryOperatorPrimitive
+  | SyntaxUserDefinedFunctionCall iso )
 
 class SyntaxExpressionNumber
   let value: F32
@@ -82,7 +85,7 @@ class SyntaxExpressionUnary
 
   new create(operand': SyntaxExpression, operator': SyntaxUnaryOperator) =>
     operand = operand'
-    operator = operator'
+    operator = consume operator'
 
 class SyntaxExpressionBinary
   let left_operand: SyntaxExpression

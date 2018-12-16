@@ -1,3 +1,5 @@
+use "debug"
+
 primitive AutomatonProgram
   fun string(): String => "Program"
 primitive AutomatonStatement
@@ -129,6 +131,10 @@ class ParserStructuredAutomaton
   var var_index: Array[SyntaxExpression] iso = recover var_index.create() end
 
   // Exp
+  // None represents noop at the end of Eb
+  let exp_unop: Array[(SyntaxUnaryOperator | None)] = exp_unop.create()
+  // None represents open-brace
+  let exp_binop: Array[(SyntaxBinaryOperator | None)] = exp_binop.create()
   let exp_list: Array[SyntaxExpression iso] = exp_list.create()
 
   // Data
@@ -293,6 +299,7 @@ class ParserStructuredAutomaton
         assign_var = (exp_list.pop()?) as SyntaxExpressionVariable iso^
         automaton.push((AutomatonAssign, 4))
         automaton.push((AutomatonExp, 0))
+        exp_unop.push(None)
       | (AutomatonAssign, 4) =>
         let leftside: SyntaxExpressionVariable iso =
           (assign_var = recover assign_var.create("") end)
@@ -326,6 +333,7 @@ class ParserStructuredAutomaton
           _expect_token_category(token', TokenSpecial)?
           automaton.push((AutomatonVar, 3))
           automaton.push((AutomatonExp, 0))
+          exp_unop.push(None)
         else
           let name: String = (var_name = "")
           let index: Array[SyntaxExpression] iso =
@@ -342,6 +350,7 @@ class ParserStructuredAutomaton
         | MatchStrings(token'.data, ",") =>
           automaton.push((AutomatonVar, 3))
           automaton.push((AutomatonExp, 0))
+          exp_unop.push(None)
         | MatchStrings(token'.data, ")") =>
           automaton.push((AutomatonVar, 4))
         else _invalid_token(state._1, state._2, token')? end
@@ -353,6 +362,254 @@ class ParserStructuredAutomaton
           name,
           consume index) end)
         this.apply(token')?
+
+      // Exp
+      | (AutomatonExp, 0) =>
+        match true
+        | MatchStrings(token'.data, "+") =>
+          _expect_token_category(token', TokenSpecial)?
+          automaton.push((AutomatonExp, 0))
+        | MatchStrings(token'.data, "-") =>
+          _expect_token_category(token', TokenSpecial)?
+          automaton.push((AutomatonExp, 0))
+          if exp_unop.pop()? is None then
+            exp_unop.push(SyntaxNegation)
+          else
+            exp_unop.push(None)
+          end
+        else
+          automaton.push((AutomatonExp, 1))
+          automaton.push((AutomatonEb, 0))
+          this.apply(token')?
+        end
+      | (AutomatonExp, 1) =>
+        try
+          let exp: SyntaxExpression iso = exp_list.pop()?
+          if exp_unop.pop()? is SyntaxNegation then
+            exp_list.push(
+              recover SyntaxExpressionUnary(consume exp, SyntaxNegation) end)
+          else
+            exp_list.push(consume exp)
+          end
+        else
+          _pass_error(
+            "Missing unary operator on expression", token'.line, token'.column)?
+        end
+        match true
+        | (MatchStrings(token'.data, "+") or MatchStrings(token'.data, "-")) =>
+          _expect_token_category(token', TokenSpecial)?
+          while
+            (exp_binop.size() > 0)
+              and (exp_binop(exp_binop.size() - 1)? isnt None)
+          do
+            let binop: SyntaxBinaryOperator =
+              exp_binop.pop()? as SyntaxBinaryOperator
+            try
+              let right_exp: SyntaxExpression iso = exp_list.pop()?
+              let left_exp: SyntaxExpression iso = exp_list.pop()?
+              exp_list.push(recover SyntaxExpressionBinary(
+                consume left_exp, consume right_exp, binop) end)
+            else
+              _pass_error(
+                "Insufficient operands in expression",
+                token'.line,
+                token'.column)?
+            end
+          end
+          exp_binop.push(
+            if MatchStrings(token'.data, "+") then
+              SyntaxAdd
+            else
+              SyntaxSubtract
+            end)
+          automaton.push((AutomatonExp, 1))
+          automaton.push((AutomatonEb, 0))
+          exp_unop.push(None)
+        | (MatchStrings(token'.data, "*") or MatchStrings(token'.data, "/")) =>
+          _expect_token_category(token', TokenSpecial)?
+          while
+            (exp_binop.size() > 0)
+              and (exp_binop(exp_binop.size() - 1)? isnt None)
+              and (exp_binop(exp_binop.size() - 1)? isnt SyntaxAdd)
+              and (exp_binop(exp_binop.size() - 1)? isnt SyntaxSubtract)
+          do
+            let binop: SyntaxBinaryOperator =
+              exp_binop.pop()? as SyntaxBinaryOperator
+            try
+              let right_exp: SyntaxExpression iso = exp_list.pop()?
+              let left_exp: SyntaxExpression iso = exp_list.pop()?
+              exp_list.push(recover SyntaxExpressionBinary(
+                consume left_exp, consume right_exp, binop) end)
+            else
+              _pass_error(
+                "Insufficient operands in expression",
+                token'.line,
+                token'.column)?
+            end
+          end
+          exp_binop.push(
+            if MatchStrings(token'.data, "*") then
+              SyntaxMultiply
+            else
+              SyntaxDivide
+            end)
+          automaton.push((AutomatonExp, 1))
+          automaton.push((AutomatonEb, 0))
+          exp_unop.push(None)
+        | MatchStrings(token'.data, "^") =>
+          _expect_token_category(token', TokenSpecial)?
+          while
+            (exp_binop.size() > 0)
+              and (exp_binop(exp_binop.size() - 1)? is SyntaxPower)
+          do
+            let binop: SyntaxBinaryOperator =
+              exp_binop.pop()? as SyntaxBinaryOperator
+            try
+              let right_exp: SyntaxExpression iso = exp_list.pop()?
+              let left_exp: SyntaxExpression iso = exp_list.pop()?
+              exp_list.push(recover SyntaxExpressionBinary(
+                consume left_exp, consume right_exp, binop) end)
+            else
+              _pass_error(
+                "Insufficient operands in expression",
+                token'.line,
+                token'.column)?
+            end
+          end
+          exp_binop.push(SyntaxPower)
+          automaton.push((AutomatonExp, 1))
+          automaton.push((AutomatonEb, 0))
+          exp_unop.push(None)
+        else
+          while
+            (exp_binop.size() > 0)
+              and (exp_binop(exp_binop.size() - 1)? isnt None)
+          do
+            let binop: SyntaxBinaryOperator =
+              exp_binop.pop()? as SyntaxBinaryOperator
+            try
+              let right_exp: SyntaxExpression iso = exp_list.pop()?
+              let left_exp: SyntaxExpression iso = exp_list.pop()?
+              exp_list.push(recover SyntaxExpressionBinary(
+                consume left_exp, consume right_exp, binop) end)
+            else
+              _pass_error(
+                "Insufficient operands in expression",
+                token'.line,
+                token'.column)?
+            end
+          end
+          this.apply(token')?
+        end
+
+      // Eb
+      | (AutomatonEb, 0) =>
+        match true
+        | MatchStrings(token'.data, "(") =>
+          _expect_token_category(token', TokenSpecial)?
+          automaton.push((AutomatonEb, 2))
+          automaton.push((AutomatonExp, 0))
+          exp_unop.push(None) // Eb operation
+          exp_unop.push(None) // Exp sign
+          exp_binop.push(None) // Open braces
+        | MatchStrings.prefix(token'.data, "FN") =>
+          _expect_token_category(token', TokenIdentifier)?
+          automaton.push((AutomatonEb, 5))
+          if (token'.data.size() != 3) or not(_is_letter(token'.data(2)?)) then
+            _pass_error(
+              "Invalid function name '" + token'.data + "'",
+              token'.line,
+              token'.column)?
+          end
+          exp_unop.push(recover SyntaxUserDefinedFunctionCall(token'.data) end)
+        | MatchStrings(token'.data, "SIN") =>
+          _expect_token_category(token', TokenIdentifier)?
+          automaton.push((AutomatonEb, 5))
+          exp_unop.push(SyntaxSine)
+        | MatchStrings(token'.data, "COS") =>
+          _expect_token_category(token', TokenIdentifier)?
+          automaton.push((AutomatonEb, 5))
+          exp_unop.push(SyntaxCosine)
+        | MatchStrings(token'.data, "TAN") =>
+          _expect_token_category(token', TokenIdentifier)?
+          automaton.push((AutomatonEb, 5))
+          exp_unop.push(SyntaxTangent)
+        | MatchStrings(token'.data, "ATN") =>
+          _expect_token_category(token', TokenIdentifier)?
+          automaton.push((AutomatonEb, 5))
+          exp_unop.push(SyntaxArctangent)
+        | MatchStrings(token'.data, "EXP") =>
+          _expect_token_category(token', TokenIdentifier)?
+          automaton.push((AutomatonEb, 5))
+          exp_unop.push(SyntaxExponential)
+        | MatchStrings(token'.data, "ABS") =>
+          _expect_token_category(token', TokenIdentifier)?
+          automaton.push((AutomatonEb, 5))
+          exp_unop.push(SyntaxAbsolute)
+        | MatchStrings(token'.data, "LOG") =>
+          _expect_token_category(token', TokenIdentifier)?
+          automaton.push((AutomatonEb, 5))
+          exp_unop.push(SyntaxLogarithm)
+        | MatchStrings(token'.data, "SQR") =>
+          _expect_token_category(token', TokenIdentifier)?
+          automaton.push((AutomatonEb, 5))
+          exp_unop.push(SyntaxSquareRoot)
+        | MatchStrings(token'.data, "INT") =>
+          _expect_token_category(token', TokenIdentifier)?
+          automaton.push((AutomatonEb, 5))
+          exp_unop.push(SyntaxInteger)
+        | MatchStrings(token'.data, "RND") =>
+          _expect_token_category(token', TokenIdentifier)?
+          automaton.push((AutomatonEb, 5))
+          exp_unop.push(SyntaxRandom)
+        else
+          automaton.push((AutomatonEb, 3))
+          if token'.category is TokenNumber then
+            let float: F32 = _parse_float(token')?
+            exp_list.push(recover SyntaxExpressionNumber(float) end)
+          else
+            automaton.push((AutomatonVar, 0))
+            this.apply(token')?
+          end
+        end
+      | (AutomatonEb, 2) =>
+        if not MatchStrings(token'.data, ")") then
+          _pass_error(
+            "Unbalanced parentheses; expected ')'",
+            token'.line,
+            token'.column)?
+        end
+        _expect_token_category(token', TokenIdentifier)?
+        automaton.push((AutomatonEb, 3))
+        var exp = exp_list.pop()?
+        let unop: (None | SyntaxUnaryOperator) =
+          try
+            exp_unop.pop()?
+          else
+            _pass_error(
+              "Missing operator in expression",
+              token'.line,
+              token'.column)?
+            error
+          end
+        match consume unop
+        | None => None
+        | let unop': SyntaxUserDefinedFunctionCall iso =>
+          exp = recover SyntaxExpressionUnary(consume exp, consume unop') end
+        | let unop': SyntaxUnaryOperatorPrimitive =>
+          exp = recover SyntaxExpressionUnary(consume exp, unop') end
+        end
+        exp_list.push(consume exp)
+      | (AutomatonEb, 3) =>
+        this.apply(token')?
+      | (AutomatonEb, 5) =>
+        _expect_token_category(token', TokenIdentifier)?
+        if not MatchStrings(token'.data, "(") then
+          _invalid_token(state._1, state._2, token')?
+        end
+        automaton.push((AutomatonEb, 2))
+        automaton.push((AutomatonExp, 0))
+        exp_unop.push(None)
 
       // Read
       | (AutomatonRead, 1) =>
@@ -422,18 +679,17 @@ class ParserStructuredAutomaton
             token'.line, token'.column)?
         end
       | (AutomatonFor, 2) =>
-        automaton.push((AutomatonFor, 4))
         _expect_token_category(token', TokenSpecial)?
         if not MatchStrings(token'.data, "=") then
           _invalid_token(state._1, state._2, token')?
         end
-      | (AutomatonFor, 4) =>
         automaton.push((AutomatonFor, 5))
         automaton.push((AutomatonExp, 0))
-        this.apply(token')?
+        exp_unop.push(None)
       | (AutomatonFor, 5) =>
         automaton.push((AutomatonFor, 7))
         automaton.push((AutomatonExp, 0))
+        exp_unop.push(None)
         _expect_token_category(token', TokenIdentifier)?
         if not MatchStrings(token'.data, "TO") then
           _invalid_token(state._1, state._2, token')?
@@ -448,6 +704,7 @@ class ParserStructuredAutomaton
         if MatchStrings(token'.data, "STEP") then
           automaton.push((AutomatonFor, 9))
           automaton.push((AutomatonExp, 0))
+          exp_unop.push(None)
           _expect_token_category(token', TokenIdentifier)?
         else
           _expect_token_category(token', TokenNumber)?
@@ -562,7 +819,6 @@ class ParserStructuredAutomaton
           + category.string()
           + "'",
         token.line, token.column)?
-      error
     end
 
   fun _invalid_token(
@@ -573,7 +829,7 @@ class ParserStructuredAutomaton
     _pass_error(
       "Invalid token '"
         + token.data
-        + "'' in automaton '"
+        + "' in automaton '"
         + machine.string()
         + "' state "
         + state.string(),

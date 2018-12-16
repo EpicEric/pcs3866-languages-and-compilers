@@ -33,13 +33,7 @@ actor TestTokenCoordinator
   fun _format_token(token: TokenEventWord iso): String =>
     let line = token.line
     let column = token.column
-    let category =
-      match token.category
-        | TokenIdentifier => "ID"
-        | TokenNumber => "Number"
-        | TokenSpecial => "Special"
-        | TokenString => "String"
-      end
+    let category = token.category.string()
     "#"
       + Format(token_count.string() where width = 4)
       + " ("

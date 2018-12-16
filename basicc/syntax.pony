@@ -236,6 +236,8 @@ class SyntaxRemark
 
 /* Syntax blocks for semantic */
 
+primitive SyntaxEOF
+
 type SyntaxEvent is
   ( SyntaxLabel iso
   | SyntaxCompilerLabel iso
@@ -248,13 +250,17 @@ type SyntaxEvent is
   | SyntaxUserDefinedFunctionDeclaration iso
   | SyntaxSubroutine iso
   | SyntaxReturn
-  | SyntaxRemark iso )
+  | SyntaxRemark iso
+  | SyntaxEOF )
 
 actor SyntaxParserPass
   let coordinator: Coordinator
   let callback: {(SyntaxEvent)} val
   var pass_error: Bool = false
   var finished: Bool = false
+
+  // Structured automaton
+  var automaton: (ParserStructuredAutomaton | None) = None
 
   // READ / DATA
   let read_list: Array[SyntaxExpressionVariable iso] = read_list.create()
@@ -276,11 +282,25 @@ actor SyntaxParserPass
   =>
     coordinator = coordinator'
     callback = callback'
+    automaton = ParserStructuredAutomaton(this)
 
-  be apply(character: TokenEvent) =>
+  be apply(token: TokenEvent) =>
     if pass_error then return end
-    coordinator.pass_error(this, "SyntaxParserPass is unimplemented")
-    pass_error = true
+    if finished then
+      coordinator.pass_error(this, "Cannot parse tokens after EOF")
+      pass_error = true
+      return
+    end
+    try
+      match automaton
+      | let a: ParserStructuredAutomaton => a(consume token)?
+      else
+        coordinator.pass_error(this, "Unexpected structured automaton")
+        pass_error = true
+      end
+    else
+      pass_error = true
+    end
 
   fun ref syntax_read(variable: SyntaxExpressionVariable iso) ? =>
     """

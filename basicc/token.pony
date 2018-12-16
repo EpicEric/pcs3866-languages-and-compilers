@@ -1,7 +1,11 @@
 primitive TokenIdentifier
+  fun string(): String => "ID"
 primitive TokenNumber
+  fun string(): String => "Number"
 primitive TokenSpecial
+  fun string(): String => "Special"
 primitive TokenString
+  fun string(): String => "String"
 type TokenCategory is
   ( TokenIdentifier
   | TokenNumber
@@ -9,18 +13,18 @@ type TokenCategory is
   | TokenString )
 
 class TokenEventWord
-  let data: String iso
+  let data: String
   let line: USize
   let column: USize
   let category: TokenCategory
 
   new create(
-    data': String iso,
+    data': String,
     line': USize,
     column': USize,
     category': TokenCategory)
   =>
-    data = consume data'
+    data = data'
     line = line'
     column = column'
     category = category'
@@ -28,25 +32,6 @@ class TokenEventWord
 primitive TokenEOF
 
 type TokenEvent is ( TokenEventWord iso | TokenEOF )
-
-primitive MatchStrings
-  fun apply(first: String, second: String): Bool =>
-    if first.size() != second.size() then return false end
-    var i: USize = 0
-    try
-      while i < first.size() do
-        let first_char: U8 =
-          if (first(i)? >= 0x61) and (first(i)? <= 0x7A) then
-            first(i)? - 0x20
-          else first(i)? end
-        let second_char: U8 =
-          if (second(i)? >= 0x61) and (second(i)? <= 0x7A) then
-            second(i)? - 0x20
-          else second(i)? end
-        if (first_char != second_char) then return false end
-      end
-    else return false end
-    true
 
 actor TokenCategorizerPass
   let coordinator: Coordinator

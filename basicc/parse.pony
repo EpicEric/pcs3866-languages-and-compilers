@@ -141,6 +141,10 @@ class ParserStructuredAutomaton
   var data_sign: String = "+"
   var data_number: F32 = 0
 
+  // Print
+  var print_list: Array[(String | SyntaxExpression)] iso =
+    recover print_list.create() end
+
   // If
   var if_comparator: SyntaxComparator = SyntaxEqualTo
 
@@ -284,6 +288,7 @@ class ParserStructuredAutomaton
         | MatchStrings(token'.data, "REM") =>
           automaton.push((AutomatonRemark, 1))
         | MatchStrings(token'.data, "END") =>
+          automaton.pop()?
           automaton.push((AutomatonProgram, 4))
         else
           _invalid_token(state._1, state._2, token')?
@@ -576,13 +581,13 @@ class ParserStructuredAutomaton
           end
         end
       | (AutomatonEb, 2) =>
+        _expect_token_category(token', TokenSpecial)?
         if not MatchStrings(token'.data, ")") then
           _pass_error(
             "Unbalanced parentheses; expected ')'",
             token'.line,
             token'.column)?
         end
-        _expect_token_category(token', TokenIdentifier)?
         automaton.push((AutomatonEb, 3))
         var exp = exp_list.pop()?
         let unop: (None | SyntaxUnaryOperator) =
@@ -606,7 +611,7 @@ class ParserStructuredAutomaton
       | (AutomatonEb, 3) =>
         this.apply(token')?
       | (AutomatonEb, 5) =>
-        _expect_token_category(token', TokenIdentifier)?
+        _expect_token_category(token', TokenSpecial)?
         if not MatchStrings(token'.data, "(") then
           _invalid_token(state._1, state._2, token')?
         end
@@ -659,6 +664,70 @@ class ParserStructuredAutomaton
           _expect_token_category(token', TokenSpecial)?
           automaton.push((AutomatonData, 1))
         else this.apply(token')? end
+
+      // Print
+      | (AutomatonPrint, 1) =>
+        match token'.category
+        | TokenNumber =>
+          if print_list.size() == 0 then print_list.push("\n") end
+          let final_print_list = (print_list = recover print_list.create() end)
+          pass.callback(recover SyntaxPrint(consume final_print_list) end)
+          this.apply(token')?
+        else
+          if print_list.size() > 0 then print_list.push(" ") end
+          automaton.push((AutomatonPrint, 2))
+          automaton.push((AutomatonPitem, 0))
+          this.apply(token')?
+        end
+      | (AutomatonPrint, 2) =>
+        match token'.category
+        | TokenNumber =>
+          print_list.push("\n")
+          let final_print_list = (print_list = recover print_list.create() end)
+          pass.callback(recover SyntaxPrint(consume final_print_list) end)
+          this.apply(token')?
+        else
+          _expect_token_category(token', TokenSpecial)?
+          if not MatchStrings(token'.data, ",") then
+            _invalid_token(state._1, state._2, token')?
+          end
+          automaton.push((AutomatonPrint, 1))
+        end
+
+      // Pitem
+      | (AutomatonPitem, 0) =>
+        match token'.category
+        | TokenString =>
+          if not(MatchStrings.prefix(token'.data, "\""))
+            // or not(MatchStrings.suffix(token'.data, "\""))
+          then
+            _invalid_token(state._1, state._2, token')?
+          end
+          if token'.data.size() > 2 then
+            print_list.push(token'.data.trim(1, token'.data.size() - 1))
+          end
+          automaton.push((AutomatonPitem, 1))
+        else
+          automaton.push((AutomatonPitem, 2))
+          automaton.push((AutomatonExp, 0))
+          exp_unop.push(None)
+          this.apply(token')?
+        end
+      | (AutomatonPitem, 1) =>
+        match token'.category
+        | TokenNumber =>
+          this.apply(token')?
+        else
+          if not(MatchStrings(token'.data, ",")) then
+            automaton.push((AutomatonPitem, 2))
+            automaton.push((AutomatonExp, 0))
+            exp_unop.push(None)
+          end
+          this.apply(token')?
+        end
+      | (AutomatonPitem, 2) =>
+        print_list.push(exp_list.pop()?)
+        this.apply(token')?
 
       // Goto
       | (AutomatonGoto, 1) =>

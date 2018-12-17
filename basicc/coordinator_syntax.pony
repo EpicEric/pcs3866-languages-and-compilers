@@ -25,6 +25,16 @@ actor TestSyntaxCoordinator
       env.out.print("Label: " + label.label.string())
     | let attribution: SyntaxAttribution val =>
       env.out.print("Attribution: " + attribution.variable.name + " = //TODO")
+    | let print: SyntaxPrint val =>
+      let print_list = Array[String]
+      for i in print.list.values() do
+        print_list.push(match i
+          | let s: String => "\"" + s + "\", "
+          | let e: SyntaxExpression val => "//TODO" + ", "
+          end)
+      end
+      let print_string: String = String.join(print_list.values())
+      env.out.print("Print: " + print_string.trim(0, print_string.size() - 2))
     | let goto: SyntaxGoto val =>
       env.out.print("Go to: " + goto.label.string())
     | let ifbody: SyntaxIf val =>

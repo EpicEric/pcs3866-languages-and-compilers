@@ -122,24 +122,11 @@ class SyntaxAttribution
 
 /* PRINT */
 
-primitive SyntaxPrintLineBreak
+class SyntaxPrint
+  let list: Array[(String | SyntaxExpression)]
 
-class SyntaxPrintString
-  let text: String
-
-  new create(text': String) =>
-    text = text'
-
-class SyntaxPrintExpression
-  let expression: SyntaxExpression
-
-  new create(expression': SyntaxExpression) =>
-    expression = expression'
-
-type SyntaxPrint is
-  ( SyntaxPrintLineBreak
-  | SyntaxPrintString
-  | SyntaxPrintExpression )
+  new create(list': Array[(String | SyntaxExpression)]) =>
+    list = list'
 
 /* GOTO */
 

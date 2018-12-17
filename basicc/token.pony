@@ -47,8 +47,8 @@ actor TokenCategorizerPass
 
   new create(
     coordinator': Coordinator,
-    callback': {(TokenEvent)} val)
-  =>
+    callback': {(TokenEvent)} val
+  ) =>
     coordinator = coordinator'
     callback = callback'
 

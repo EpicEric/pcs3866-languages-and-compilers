@@ -1,6 +1,6 @@
 use "format"
 
-actor TestTokenCoordinator
+actor CoordinatorToken
   let env: Env
   var token_count: USize = 0
   let token_list: Array[String] = Array[String]
@@ -8,7 +8,7 @@ actor TestTokenCoordinator
   new create(env': Env, file: String) =>
     env = env'
     let categorizer = TokenCategorizerPass(
-      this, {(token: TokenEvent)(coordinator: TestTokenCoordinator = this) =>
+      this, {(token: TokenEvent)(coordinator: CoordinatorToken = this) =>
         coordinator(consume token)} val)
     let filter = CharacterFilterPass(
       this, {(char: CharacterEvent iso) =>

@@ -1,6 +1,6 @@
 use "format"
 
-actor TestSyntaxCoordinator
+actor CoordinatorSyntax
   let env: Env
   var token_count: USize = 0
   let token_list: Array[String] = Array[String]
@@ -8,7 +8,7 @@ actor TestSyntaxCoordinator
   new create(env': Env, file: String) =>
     env = env'
     let parser = SyntaxParserPass(
-      this, {(token: SyntaxEvent)(coordinator: TestSyntaxCoordinator = this) =>
+      this, {(token: SyntaxEvent)(coordinator: CoordinatorSyntax = this) =>
         coordinator(consume token)} val)
     let categorizer = TokenCategorizerPass(
       this, {(token: TokenEvent) =>
@@ -26,7 +26,8 @@ actor TestSyntaxCoordinator
     | SyntaxEOF =>
       token_count = token_count + 1
       token_list.push(_format_token("End", ""))
-      env.out.print("Syntax pass: Read " + token_count.string() + " token(s).")
+      env.out.print("Syntax pass: Read " + token_count.string()
+        + " syntactic structure(s).")
       for token' in token_list.values() do
         env.out.print(token')
       end
@@ -197,8 +198,8 @@ actor TestSyntaxCoordinator
       "Token categorizer"
     | let p': SyntaxParserPass =>
       "Syntax parser"
-    // else
-    //   "Unknown pass"
+    else
+      "Unknown pass"
     end
     let error_string: String iso = recover String(
       pass_name.size() + 8 + err.size()) end

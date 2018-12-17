@@ -1,5 +1,3 @@
-use "debug"
-
 primitive AutomatonProgram
   fun string(): String => "Program"
 primitive AutomatonStatement

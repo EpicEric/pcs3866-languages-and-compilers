@@ -31,11 +31,11 @@ actor Main
     
     match cmd.option("pass").string()
     | "token" =>
-      TestTokenCoordinator(env, cmd.arg("file").string())
+      CoordinatorToken(env, cmd.arg("file").string())
     | "syntax" =>
-      TestSyntaxCoordinator(env, cmd.arg("file").string())
+      CoordinatorSyntax(env, cmd.arg("file").string())
     | "all" =>
-      TestSyntaxCoordinator(env, cmd.arg("file").string()) //TODO
+      CoordinatorInterpreter(env, cmd.arg("file").string())
     else
       env.out.print(cs.help_string())
       env.exitcode(1)

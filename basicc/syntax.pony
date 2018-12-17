@@ -438,7 +438,7 @@ actor SyntaxParserPass
     let step_comparation_event: SyntaxEvent = recover iso SyntaxCompilerIf(
       SyntaxExpressionVariable("STEP"),
       SyntaxExpressionNumber(0),
-      SyntaxGreaterThan,
+      SyntaxLesserThan,
       desc_loop_label) end
     let asc_loop_event: SyntaxEvent = recover iso SyntaxIf(
       SyntaxExpressionVariable(variable'),

@@ -10,8 +10,8 @@
 70 IF I <> 0 THEN 80
 72 PRINT ".",
 80 LET I = I + 1
-84 REM Parar apos imprimir cem digitos
-85 IF I >= 100 THEN 900
+84 REM Parar apos imprimir nove digitos
+85 IF I >= 9 THEN 900
 90 LET N0 = 10 * (R - N * T)
 100 LET X0 = 10 * (3 * Q + R)
 110 LET X1 = T

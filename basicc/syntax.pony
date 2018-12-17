@@ -1,4 +1,5 @@
 use "collections"
+use "debug"
 
 /* Statement labels */
 
@@ -196,6 +197,16 @@ class SyntaxNext
     comparator = comparator'
     destination_label = destination_label'
 
+/* DIM */
+
+class SyntaxDim
+  let variable: String
+  let dimensions: Array[U32]
+
+  new create(variable': String, dimensions': Array[U32]) =>
+    variable = variable'
+    dimensions = dimensions'
+
 /* DEF FNx */
 
 class SyntaxUserDefinedFunctionDeclaration
@@ -237,6 +248,7 @@ type SyntaxEvent is
   | SyntaxCompilerGoto iso
   | SyntaxIf iso
   | SyntaxNext iso
+  | SyntaxDim iso
   | SyntaxUserDefinedFunctionDeclaration iso
   | SyntaxSubroutine iso
   | SyntaxReturn
@@ -248,6 +260,7 @@ actor SyntaxParserPass
   let callback: {(SyntaxEvent)} val
   var pass_error: Bool = false
   var finished: Bool = false
+  var unknown_error: Bool = true
 
   // Structured automaton
   var automaton: (ParserStructuredAutomaton | None) = None
@@ -281,6 +294,7 @@ actor SyntaxParserPass
       pass_error = true
       return
     end
+    unknown_error = true
     try
       match automaton
       | let a: ParserStructuredAutomaton => a(consume token)?
@@ -291,6 +305,9 @@ actor SyntaxParserPass
       end
     else
       pass_error = true
+      if unknown_error then
+        coordinator.pass_error(this, "Unknown error")
+      end
     end
 
   fun ref syntax_read(variable: SyntaxExpressionVariable iso) ? =>
@@ -307,7 +324,7 @@ actor SyntaxParserPass
         let dimensions: Array[U32] = dim_map(name)?
         // Create zero-valued index array
         for _ in dimensions.keys() do
-          index_array.push(0)
+          index_array.push(1)
         end
         // Loop until we reach the value of dimensions
         repeat
@@ -320,14 +337,14 @@ actor SyntaxParserPass
           // Iterate dimensions
           var i = index_array.size() - 1
           index_array(i)? = index_array(i)? + 1
-          while index_array(i)? >= dimensions(i)? do
-            index_array(i)? = 0
+          while (index_array(i)? > dimensions(i)?) and (i > 0) do
+            index_array(i)? = 1
             i = i - 1
             index_array(i)? = index_array(i)? + 1
           end
-        until index_array(0)? == dimensions(0)? end
+        until index_array(0)? > dimensions(0)? end
       else
-        // TODO: Verificar dimensões
+        // TODO: Check if dimensions match
         read_list.push(consume variable)
       end
     else read_list.push(consume variable) end
@@ -361,6 +378,10 @@ actor SyntaxParserPass
         consume value) end
       callback(consume event)
     end
+
+  fun ref syntax_dim(variable: String, dimensions: Array[U32]) ? =>
+    if dim_map.contains(variable) then error end
+    dim_map(variable) = dimensions
 
   fun ref syntax_for(
     variable: String,

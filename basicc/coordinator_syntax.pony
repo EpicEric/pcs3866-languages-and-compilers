@@ -20,11 +20,19 @@ actor TestSyntaxCoordinator
   be apply(token: SyntaxEvent) =>
     match consume token
     | SyntaxEOF =>
-      env.out.print("EOF")
+      env.out.print("End")
+      env.out.print("Syntax is ok")
     | let label: SyntaxLabel val =>
       env.out.print("Label: " + label.label.string())
     | let attribution: SyntaxAttribution val =>
-      env.out.print("Attribution: " + attribution.variable.name + " = //TODO")
+      let index: String =
+        if attribution.variable.index is None then
+          ""
+        else
+          "(" + "//TODO" + ")"
+        end
+      env.out.print("Attribution: " + attribution.variable.name + index
+        + " = //TODO")
     | let print: SyntaxPrint val =>
       let print_list = Array[String]
       for i in print.list.values() do
@@ -49,6 +57,14 @@ actor TestSyntaxCoordinator
         end
       env.out.print("If: //TODO " + comparator + " //TODO -> "
         + ifbody.label.string())
+    | let dim: SyntaxDim val =>
+      let dim_string: String iso = recover String end
+      for d in dim.dimensions.values() do
+        dim_string .> append(d.string()) .> append(", ")
+      end
+      let dim_string': String = consume dim_string
+      env.out.print("Dim: " + dim.variable + "("
+        + dim_string'.trim(0, dim_string'.size() - 2) + ")")
     | let gosub: SyntaxSubroutine val =>
       env.out.print("Subroutine: " + gosub.subroutine.string())
     | SyntaxReturn =>

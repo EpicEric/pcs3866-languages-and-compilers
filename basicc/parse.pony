@@ -141,6 +141,9 @@ class ParserStructuredAutomaton
   var data_sign: String = "+"
   var data_number: F32 = 0
 
+  // If
+  var if_comparator: SyntaxComparator = SyntaxEqualTo
+
   // For
   var for_variable: String = ""
   var for_max: SyntaxExpression iso = recover SyntaxExpressionNumber(1) end
@@ -677,6 +680,56 @@ class ParserStructuredAutomaton
           error
         end
         pass.callback(recover SyntaxGoto(label) end)
+
+      // If
+      | (AutomatonIf, 1) =>
+        automaton.push((AutomatonIf, 2))
+        automaton.push((AutomatonExp, 0))
+        exp_unop.push(None)
+        this.apply(token')?
+      | (AutomatonIf, 2) =>
+        _expect_token_category(token', TokenSpecial)?
+        match true
+        | MatchStrings(token'.data, ">=") =>
+          if_comparator = SyntaxGreaterThanOrEqualTo
+        | MatchStrings(token'.data, ">") =>
+          if_comparator = SyntaxGreaterThan
+        | MatchStrings(token'.data, "<>") =>
+          if_comparator = SyntaxDifferent
+        | MatchStrings(token'.data, "<") =>
+          if_comparator = SyntaxLesserThan
+        | MatchStrings(token'.data, "<=") =>
+          if_comparator = SyntaxLesserThanOrEqualTo
+        | MatchStrings(token'.data, "=") =>
+          if_comparator = SyntaxEqualTo
+        else
+          _invalid_token(state._1, state._2, token')?
+        end
+        automaton.push((AutomatonIf, 4))
+        automaton.push((AutomatonExp, 0))
+        exp_unop.push(None)
+      | (AutomatonIf, 4) =>
+        _expect_token_category(token', TokenIdentifier)?
+        if not MatchStrings(token'.data, "THEN") then
+          _invalid_token(state._1, state._2, token')?
+        end
+        automaton.push((AutomatonIf, 5))
+      | (AutomatonIf, 5) =>
+        _expect_token_category(token', TokenNumber)?
+        let label: U32 = try
+          token'.data.u32()?
+        else
+          _pass_error(
+            "IF label '"
+              + token'.data
+              + "' is not an integer",
+            token'.line, token'.column)?
+          error
+        end
+        let second_exp: SyntaxExpression iso = exp_list.pop()?
+        let first_exp: SyntaxExpression iso = exp_list.pop()?
+        pass.callback(recover SyntaxIf(
+          consume first_exp, consume second_exp, if_comparator, label) end)
 
       // For
       | (AutomatonFor, 1) =>

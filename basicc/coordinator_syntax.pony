@@ -20,13 +20,25 @@ actor TestSyntaxCoordinator
   be apply(token: SyntaxEvent) =>
     match consume token
     | SyntaxEOF =>
-      env.out.print("Syntax is ok")
+      env.out.print("EOF")
     | let label: SyntaxLabel val =>
       env.out.print("Label: " + label.label.string())
     | let attribution: SyntaxAttribution val =>
       env.out.print("Attribution: " + attribution.variable.name + " = //TODO")
     | let goto: SyntaxGoto val =>
       env.out.print("Go to: " + goto.label.string())
+    | let ifbody: SyntaxIf val =>
+      let comparator: String =
+        match ifbody.comparator
+        | SyntaxEqualTo => "eq"
+        | SyntaxDifferent => "ne"
+        | SyntaxGreaterThan => "gt"
+        | SyntaxLesserThan => "lt"
+        | SyntaxGreaterThanOrEqualTo => "ge"
+        | SyntaxLesserThanOrEqualTo => "le"
+        end
+      env.out.print("If: //TODO " + comparator + " //TODO -> "
+        + ifbody.label.string())
     | let gosub: SyntaxSubroutine val =>
       env.out.print("Subroutine: " + gosub.subroutine.string())
     | SyntaxReturn =>

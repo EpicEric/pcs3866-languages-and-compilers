@@ -177,18 +177,18 @@ class SyntaxIf
   let left_expression: SyntaxExpression
   let right_expression: SyntaxExpression
   let comparator: SyntaxComparator
-  let destination_label: U32
+  let label: U32
 
   new create(
     left_expression': SyntaxExpression,
     right_expression': SyntaxExpression,
     comparator': SyntaxComparator,
-    destination_label': U32
+    label': U32
   ) =>
     left_expression = left_expression'
     right_expression = right_expression'
     comparator = comparator'
-    destination_label = destination_label'
+    label = label'
 
 /* NEXT - Compiler-defined label */
 

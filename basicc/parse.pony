@@ -672,6 +672,7 @@ class ParserStructuredAutomaton
         | MatchStrings(token'.data, "+") =>
           automaton.push((AutomatonData, 2))
         | MatchStrings(token'.data, "-") =>
+          data_sign = token'.data
           automaton.push((AutomatonData, 2))
         else
           _expect_token_category(token', TokenNumber)?
@@ -684,7 +685,7 @@ class ParserStructuredAutomaton
         automaton.push((AutomatonData, 3))
       | (AutomatonData, 3) =>
         pass.syntax_data(
-          if MatchStrings(data_sign, "+") then
+          if MatchStrings(data_sign, "-") then
             -data_number
           else data_number end)?
         data_sign = "+"

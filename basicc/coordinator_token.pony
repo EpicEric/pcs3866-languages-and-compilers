@@ -21,7 +21,7 @@ actor TestTokenCoordinator
   be apply(token: TokenEvent) =>
     match (consume token)
     | TokenEOF =>
-      env.out.print("Read " + token_count.string() + " token(s).")
+      env.out.print("Token pass: Read " + token_count.string() + " token(s).")
       for token' in token_list.values() do
         env.out.print(token')
       end
@@ -35,7 +35,7 @@ actor TestTokenCoordinator
     let column = token.column
     let category = token.category.string()
     "#"
-      + Format(token_count.string() where width = 4)
+      + Format(token_count.string() where width = 5)
       + " ("
       + Format(line.string() where width = 3, align = AlignRight)
       + ", "

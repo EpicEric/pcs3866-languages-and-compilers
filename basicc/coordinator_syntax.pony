@@ -1,5 +1,9 @@
+use "format"
+
 actor TestSyntaxCoordinator
   let env: Env
+  var token_count: USize = 0
+  let token_list: Array[String] = Array[String]
 
   new create(env': Env, file: String) =>
     env = env'
@@ -20,36 +24,57 @@ actor TestSyntaxCoordinator
   be apply(token: SyntaxEvent) =>
     match consume token
     | SyntaxEOF =>
-      env.out.print("End")
-      env.out.print("Syntax is ok")
+      token_count = token_count + 1
+      token_list.push(_format_token("End", ""))
+      env.out.print("Syntax pass: Read " + token_count.string() + " token(s).")
+      for token' in token_list.values() do
+        env.out.print(token')
+      end
     | let label: SyntaxCompilerLabel val =>
-      env.out.print("Compiler label: " + label.label)
+      token_count = token_count + 1
+      token_list.push(_format_token("Compiler label", label.label))
     | let label: SyntaxLabel val =>
-      env.out.print("Label: " + label.label.string())
+      token_count = token_count + 1
+      token_list.push(_format_token("Label", label.label.string()))
     | let attribution: SyntaxAttribution val =>
+      token_count = token_count + 1
       let index: String =
-        if attribution.variable.index is None then
-          ""
-        else
-          "(" + "//TODO" + ")"
+        match attribution.variable.index
+        | None => ""
+        | let index': Array[SyntaxExpression] val =>
+          let s: String iso = recover String end
+          s.append("(")
+          for i in index'.values() do
+            s .> append(_exp_to_string(i)) .> append(", ")
+          end
+          try s .> pop()? .> pop()? .> append(")") end
+          consume s
         end
-      env.out.print("Attribution: " + attribution.variable.name + index
-        + " = //TODO")
+      token_list.push(_format_token(
+        "Attribution",
+        attribution.variable.name + index + " = "
+          + _exp_to_string(attribution.expression)))
     | let print: SyntaxPrint val =>
+      token_count = token_count + 1
       let print_list = Array[String]
       for i in print.list.values() do
         print_list.push(match i
-          | let s: String => "\"" + s + "\", "
-          | let e: SyntaxExpression val => "//TODO" + ", "
+          | let s: String => "\"" + s.clone() .> replace("\n", "\\n") + "\", "
+          | let e: SyntaxExpression val => _exp_to_string(e) + ", "
           end)
       end
       let print_string: String = String.join(print_list.values())
-      env.out.print("Print: " + print_string.trim(0, print_string.size() - 2))
+      token_list.push(_format_token(
+        "Print",
+        print_string.trim(0, print_string.size() - 2)))
     | let goto: SyntaxGoto val =>
-      env.out.print("Go to: " + goto.label.string())
+      token_count = token_count + 1
+      token_list.push(_format_token("Goto", goto.label.string()))
     | let goto: SyntaxCompilerGoto val =>
-      env.out.print("Compiler go to: " + goto.label)
+      token_count = token_count + 1
+      token_list.push(_format_token("Compiler goto", goto.label))
     | let ifbody: SyntaxIf val =>
+      token_count = token_count + 1
       let comparator: String =
         match ifbody.comparator
         | SyntaxEqualTo => "eq"
@@ -59,9 +84,13 @@ actor TestSyntaxCoordinator
         | SyntaxGreaterThanOrEqualTo => "ge"
         | SyntaxLesserThanOrEqualTo => "le"
         end
-      env.out.print("If: //TODO " + comparator + " //TODO -> "
-        + ifbody.label.string())
+      token_list.push(_format_token(
+        "If",
+        _exp_to_string(ifbody.left_expression) + " " + comparator + " "
+          + _exp_to_string(ifbody.right_expression) + " -> "
+          + ifbody.label.string()))
     | let ifbody: SyntaxCompilerIf val =>
+      token_count = token_count + 1
       let comparator: String =
         match ifbody.comparator
         | SyntaxEqualTo => "eq"
@@ -71,26 +100,92 @@ actor TestSyntaxCoordinator
         | SyntaxGreaterThanOrEqualTo => "ge"
         | SyntaxLesserThanOrEqualTo => "le"
         end
-      env.out.print("If: //TODO " + comparator + " //TODO -> "
-        + ifbody.label)
+      token_list.push(_format_token(
+        "Compiler if", 
+        _exp_to_string(ifbody.left_expression) + " " + comparator + " "
+          + _exp_to_string(ifbody.right_expression) + " -> "
+          + ifbody.label))
     | let dim: SyntaxDim val =>
+      token_count = token_count + 1
       let dim_string: String iso = recover String end
       for d in dim.dimensions.values() do
         dim_string .> append(d.string()) .> append(", ")
       end
       let dim_string': String = consume dim_string
-      env.out.print("Dim: " + dim.variable + "("
-        + dim_string'.trim(0, dim_string'.size() - 2) + ")")
+      token_list.push(_format_token(
+        "Dim",
+        dim.variable + "(" + dim_string'.trim(0, dim_string'.size() - 2) + ")"))
     | let def: SyntaxUserDefinedFunctionDeclaration val =>
-      env.out.print("Definition: " + def.name + "(" + def.variable
-        + ") = //TODO")
+      token_count = token_count + 1
+      token_list.push(_format_token(
+        "Definition",
+        def.name + "(" + def.variable + ") = "
+          + _exp_to_string(def.expression)))
     | let gosub: SyntaxSubroutine val =>
-      env.out.print("Subroutine: " + gosub.subroutine.string())
+      token_count = token_count + 1
+      token_list.push(_format_token("Subroutine", gosub.subroutine.string()))
     | SyntaxReturn =>
-      env.out.print("Return")
+      token_count = token_count + 1
+      token_list.push(_format_token("Return", ""))
     | let remark: SyntaxRemark val =>
-      env.out.print("Remark: " + remark.remark)
+      token_count = token_count + 1
+      token_list.push(_format_token("Remark", remark.remark))
     end
+
+  fun _exp_to_string(exp: SyntaxExpression val): String =>
+    match exp
+    | let e: SyntaxExpressionNumber val =>
+      e.value.string()
+    | let e: SyntaxExpressionVariable val =>
+      match e.index
+      | None => e.name
+      | let index: Array[SyntaxExpression] val =>
+        let string: String iso = recover String end
+        string .> append("(")
+        for i in index.values() do
+          string .> append(_exp_to_string(i)) .> append(", ")
+        end
+        try string .> pop()? .> pop()? .> append(")") end
+        consume string
+      end
+    | let e: SyntaxExpressionUnary val =>
+      let operator =
+        match e.operator
+        | SyntaxNegation => "Neg"
+        | SyntaxSine => "Sin"
+        | SyntaxCosine => "Cos"
+        | SyntaxTangent => "Tan"
+        | SyntaxArctangent => "Arctan"
+        | SyntaxExponential => "Exp"
+        | SyntaxAbsolute => "Abs"
+        | SyntaxLogarithm => "Log"
+        | SyntaxSquareRoot => "SqRt"
+        | SyntaxInteger => "Int"
+        | SyntaxRandom => "Rand"
+        | let def: SyntaxUserDefinedFunctionCall val => def.name
+        end
+      _exp_to_string(e.operand) + " " + operator
+    | let e: SyntaxExpressionBinary val =>
+      let operator =
+        match e.operator
+        | SyntaxAdd => "+"
+        | SyntaxSubtract => "-"
+        | SyntaxMultiply => "*"
+        | SyntaxDivide => "/"
+        | SyntaxPower => "^"
+        end
+      _exp_to_string(e.left_operand) + " " + _exp_to_string(e.right_operand)
+        + " " + operator
+    end
+
+  fun _format_token(name: String, data: String): String =>
+    "#"
+      + Format(token_count.string() where width = 4)
+      + " "
+      + Format(name where width = 14, align = AlignRight)
+      + if data isnt "" then
+          ": " + data
+        else "" end
 
   be pass_error(pass: Pass, err: String = "Unknown error") =>
     let pass_name = match pass

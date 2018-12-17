@@ -65,6 +65,9 @@ actor TestSyntaxCoordinator
       let dim_string': String = consume dim_string
       env.out.print("Dim: " + dim.variable + "("
         + dim_string'.trim(0, dim_string'.size() - 2) + ")")
+    | let def: SyntaxUserDefinedFunctionDeclaration val =>
+      env.out.print("Definition: " + def.name + "(" + def.variable
+        + ") = //TODO")
     | let gosub: SyntaxSubroutine val =>
       env.out.print("Subroutine: " + gosub.subroutine.string())
     | SyntaxReturn =>

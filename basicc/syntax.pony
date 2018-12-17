@@ -210,11 +210,13 @@ class SyntaxDim
 /* DEF FNx */
 
 class SyntaxUserDefinedFunctionDeclaration
-  let argument: String
+  let name: String
+  let variable: String
   let expression: SyntaxExpression
 
-  new create(argument': String, expression': SyntaxExpression) =>
-    argument = argument'
+  new create(name': String, variable': String, expression': SyntaxExpression) =>
+    name = name'
+    variable = variable'
     expression = expression'
 
 /* GOSUB / RETURN */
@@ -315,7 +317,7 @@ actor SyntaxParserPass
     Add variable to read_list and pop attributions if necessary.
     If variable is dimensioned, add multiple variables.
     """
-    let name: String = variable.name
+    let name: String = CapitalizeString(variable.name)
     if dim_map.contains(name) then
       match variable.index
       | None =>
@@ -380,8 +382,9 @@ actor SyntaxParserPass
     end
 
   fun ref syntax_dim(variable: String, dimensions: Array[U32]) ? =>
-    if dim_map.contains(variable) then error end
-    dim_map(variable) = dimensions
+    let variable': String = CapitalizeString(variable)
+    if dim_map.contains(variable') then error end
+    dim_map(variable') = dimensions
 
   fun ref syntax_for(
     variable: String,
@@ -392,8 +395,9 @@ actor SyntaxParserPass
     """
     Save FOR data in map
     """
-    if for_map.contains(variable) then error end
-    for_map(variable) = (label, max_exp, step_exp)
+    let variable': String = CapitalizeString(variable)
+    if for_map.contains(variable') then error end
+    for_map(variable') = (label, max_exp, step_exp)
 
   fun ref syntax_next(variable: String) ? =>
     """
@@ -412,12 +416,13 @@ actor SyntaxParserPass
     EscapeLoop:
       ...
     """
-    (let _, let for_data) = for_map.remove(variable)?
+    let variable': String = CapitalizeString(variable)
+    (let _, let for_data) = for_map.remove(variable')?
     let return_label: U32 = for_data._1
     let max_exp: SyntaxExpression iso = recover iso for_data._2 end
     let step_exp: SyntaxExpression iso = recover iso for_data._3 end
-    let desc_loop_label: String = "DESC_" + variable
-    let loop_escape_label: String = "END_LOOP_" + variable
+    let desc_loop_label: String = "DESC_" + variable'
+    let loop_escape_label: String = "END_LOOP_" + variable'
 
     let step_attribution_event: SyntaxEvent = recover iso SyntaxAttribution(
       SyntaxExpressionVariable("STEP"),
@@ -426,9 +431,9 @@ actor SyntaxParserPass
       SyntaxExpressionVariable("MAX"),
       consume max_exp) end
     let step_addition_event: SyntaxEvent = recover iso SyntaxAttribution(
-      SyntaxExpressionVariable(variable),
+      SyntaxExpressionVariable(variable'),
       SyntaxExpressionBinary(
-        SyntaxExpressionVariable(variable),
+        SyntaxExpressionVariable(variable'),
         SyntaxExpressionVariable("STEP"),
         SyntaxAdd)) end
     let step_comparation_event: SyntaxEvent = recover iso SyntaxNext(
@@ -437,7 +442,7 @@ actor SyntaxParserPass
       SyntaxGreaterThan,
       desc_loop_label) end
     let asc_loop_event: SyntaxEvent = recover iso SyntaxIf(
-      SyntaxExpressionVariable(variable),
+      SyntaxExpressionVariable(variable'),
       SyntaxExpressionVariable("MAX"),
       SyntaxLesserThanOrEqualTo,
       return_label) end
@@ -446,7 +451,7 @@ actor SyntaxParserPass
     let desc_label_event: SyntaxEvent = recover iso SyntaxCompilerLabel(
       desc_loop_label) end
     let desc_loop_event: SyntaxEvent = recover iso SyntaxIf(
-      SyntaxExpressionVariable(variable),
+      SyntaxExpressionVariable(variable'),
       SyntaxExpressionVariable("MAX"),
       SyntaxGreaterThanOrEqualTo,
       return_label) end

@@ -117,6 +117,15 @@ primitive MatchStrings
     else return false end
     true
 
+primitive CapitalizeString
+  fun apply(string: String): String =>
+    let string': String iso = recover String(string.size()) end
+    for char in string.values() do
+      string'.push(
+        if (char >= 0x61) and (char <= 0x7A) then char - 0x20 else char end)
+    end
+    consume string'
+
 class ParserStructuredAutomaton
   let pass: SyntaxParserPass ref
   let automaton: Array[(AutomatonMachine, USize)] = automaton.create()
@@ -156,6 +165,10 @@ class ParserStructuredAutomaton
   // Dim
   var dim_variable: String = ""
   var dim_array: Array[U32] = dim_array.create()
+
+  // Def
+  var def_name: String = ""
+  var def_variable: String = ""
 
   // Remark
   var remark_list: Array[String] = remark_list.create()
@@ -323,7 +336,7 @@ class ParserStructuredAutomaton
       // Var
       | (AutomatonVar, 0) =>
         _expect_token_category(token', TokenIdentifier)?
-        var_name.push(token'.data)
+        var_name.push(CapitalizeString(token'.data))
         match token'.data.size()
         | 1 =>
           if not(_is_letter(token'.data(0)?)) then
@@ -337,6 +350,7 @@ class ParserStructuredAutomaton
           then
             _invalid_token(state._1, state._2, token')?
           else
+            var_index.push(recover Array[SyntaxExpression] end)
             automaton.push((AutomatonVar, 4))
           end
         else _invalid_token(state._1, state._2, token')? end
@@ -350,7 +364,7 @@ class ParserStructuredAutomaton
         else
           let name: String = var_name.pop()?
           exp_list.push(recover SyntaxExpressionVariable(
-            name,
+            CapitalizeString(name),
             None) end)
           this.apply(token')?
         end
@@ -372,11 +386,11 @@ class ParserStructuredAutomaton
         let index: Array[SyntaxExpression] iso = var_index.pop()?
         if index.size() > 0 then
           exp_list.push(recover SyntaxExpressionVariable(
-            name,
+            CapitalizeString(name),
             consume index) end)
         else
           exp_list.push(recover SyntaxExpressionVariable(
-            name,
+            CapitalizeString(name),
             None) end)
         end
         this.apply(token')?
@@ -539,7 +553,8 @@ class ParserStructuredAutomaton
               token'.line,
               token'.column)?
           end
-          exp_unop.push(recover SyntaxUserDefinedFunctionCall(token'.data) end)
+          exp_unop.push(recover SyntaxUserDefinedFunctionCall(
+            CapitalizeString(token'.data)) end)
         | MatchStrings(token'.data, "SIN") =>
           _expect_token_category(token', TokenIdentifier)?
           automaton.push((AutomatonEb, 5))
@@ -631,19 +646,14 @@ class ParserStructuredAutomaton
 
       // Read
       | (AutomatonRead, 1) =>
-        Debug("read1")
         automaton.push((AutomatonRead, 2))
         automaton.push((AutomatonVar, 0))
         this.apply(token')?
       | (AutomatonRead, 2) =>
-        Debug("read2")
         let exp: SyntaxExpression iso = exp_list.pop()?
-        Debug("read2 pop ok")
         match (consume exp)
         | let variable: SyntaxExpressionVariable iso =>
-          Debug("read2 go to read")
           pass.syntax_read(consume variable)?
-          Debug("read2 return from read")
         else
           _pass_error(
             "Expression is not a variable",
@@ -828,7 +838,7 @@ class ParserStructuredAutomaton
           (for_variable.size() > 2)
             or (not(_is_letter(for_variable(0)?)))
             or ((for_variable.size() == 2)
-              and not(_is_letter(for_variable(1)?)))
+              and not(_is_digit(for_variable(1)?)))
         then
           _invalid_token(state._1, state._2, token')?
         end
@@ -857,7 +867,7 @@ class ParserStructuredAutomaton
         end
         let exp: SyntaxExpression iso = try exp_list.pop()? else error end
         pass.callback(recover SyntaxAttribution(
-          recover SyntaxExpressionVariable(for_variable) end,
+          recover SyntaxExpressionVariable(CapitalizeString(for_variable)) end,
           consume exp) end)
       | (AutomatonFor, 7) =>
         let exp: SyntaxExpression iso = try exp_list.pop()? else error end
@@ -916,7 +926,7 @@ class ParserStructuredAutomaton
           (for_variable.size() > 2)
             or (not(_is_letter(for_variable(0)?)))
             or ((for_variable.size() == 2)
-              and not(_is_letter(for_variable(1)?)))
+              and not(_is_digit(for_variable(1)?)))
         then
           _invalid_token(state._1, state._2, token')?
         end
@@ -968,12 +978,15 @@ class ParserStructuredAutomaton
             dim_syntax_array.push(d)
           end
           pass.callback(
-            recover SyntaxDim(dim_variable, consume dim_syntax_array) end)
+            recover SyntaxDim(
+              CapitalizeString(dim_variable),
+              consume dim_syntax_array) end)
           try
-            pass.syntax_dim(dim_variable, dim_array)?
+            pass.syntax_dim(CapitalizeString(dim_variable), dim_array)?
           else
             _pass_error(
-              "DIM variable '" + dim_variable + "' already defined",
+              "DIM variable '" + CapitalizeString(dim_variable)
+                + "' already defined",
               token'.line,
               token'.column)?
           end
@@ -986,6 +999,57 @@ class ParserStructuredAutomaton
         else
           this.apply(token')?
         end
+
+      // Def
+      | (AutomatonDef, 1) =>
+        _expect_token_category(token', TokenIdentifier)?
+        if
+          not(MatchStrings.prefix(token'.data, "FN"))
+            or (token'.data.size() != 3)
+            or not(_is_letter(token'.data(2)?))
+        then  _invalid_token(state._1, state._2, token')? end
+        def_name = token'.data
+        automaton.push((AutomatonDef, 3))
+      | (AutomatonDef, 3) =>
+        _expect_token_category(token', TokenSpecial)?
+        if not(MatchStrings(token'.data, "(")) then
+          _invalid_token(state._1, state._2, token')?
+        end
+        automaton.push((AutomatonDef, 4))
+      | (AutomatonDef, 4) =>
+        _expect_token_category(token', TokenIdentifier)?
+        def_variable = token'.data
+        // Variable should be letter [ digit ]
+        if
+          (def_variable.size() > 2)
+            or (not(_is_letter(def_variable(0)?)))
+            or ((def_variable.size() == 2)
+              and not(_is_digit(def_variable(1)?)))
+        then
+          _invalid_token(state._1, state._2, token')?
+        end
+        automaton.push((AutomatonDef, 6))
+      | (AutomatonDef, 6) =>
+        _expect_token_category(token', TokenSpecial)?
+        if not(MatchStrings(token'.data, ")")) then
+          _invalid_token(state._1, state._2, token')?
+        end
+        automaton.push((AutomatonDef, 7))
+      | (AutomatonDef, 7) =>
+        _expect_token_category(token', TokenSpecial)?
+        if not(MatchStrings(token'.data, "=")) then
+          _invalid_token(state._1, state._2, token')?
+        end
+        automaton.push((AutomatonDef, 9))
+        automaton.push((AutomatonExp, 0))
+        exp_unop.push(None)
+      | (AutomatonDef, 9) =>
+        let exp: SyntaxExpression iso = exp_list.pop()?
+        pass.callback(recover SyntaxUserDefinedFunctionDeclaration(
+          CapitalizeString(def_name),
+          CapitalizeString(def_variable),
+          consume exp) end)
+        this.apply(token')?
 
       // Gosub
       | (AutomatonGosub, 1) =>

@@ -178,24 +178,24 @@ class SyntaxIf
     comparator = comparator'
     label = label'
 
-/* NEXT - Compiler-defined label */
+/* Compiler IF */
 
-class SyntaxNext
+class SyntaxCompilerIf
   let left_expression: SyntaxExpression
   let right_expression: SyntaxExpression
   let comparator: SyntaxComparator
-  let destination_label: String
+  let label: String
 
   new create(
     left_expression': SyntaxExpression,
     right_expression': SyntaxExpression,
     comparator': SyntaxComparator,
-    destination_label': String
+    label': String
   ) =>
     left_expression = left_expression'
     right_expression = right_expression'
     comparator = comparator'
-    destination_label = destination_label'
+    label = label'
 
 /* DIM */
 
@@ -249,7 +249,7 @@ type SyntaxEvent is
   | SyntaxGoto iso
   | SyntaxCompilerGoto iso
   | SyntaxIf iso
-  | SyntaxNext iso
+  | SyntaxCompilerIf iso
   | SyntaxDim iso
   | SyntaxUserDefinedFunctionDeclaration iso
   | SyntaxSubroutine iso
@@ -436,7 +436,7 @@ actor SyntaxParserPass
         SyntaxExpressionVariable(variable'),
         SyntaxExpressionVariable("STEP"),
         SyntaxAdd)) end
-    let step_comparation_event: SyntaxEvent = recover iso SyntaxNext(
+    let step_comparation_event: SyntaxEvent = recover iso SyntaxCompilerIf(
       SyntaxExpressionVariable("STEP"),
       SyntaxExpressionNumber(0),
       SyntaxGreaterThan,

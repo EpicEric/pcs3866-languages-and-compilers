@@ -22,6 +22,8 @@ actor TestSyntaxCoordinator
     | SyntaxEOF =>
       env.out.print("End")
       env.out.print("Syntax is ok")
+    | let label: SyntaxCompilerLabel val =>
+      env.out.print("Compiler label: " + label.label)
     | let label: SyntaxLabel val =>
       env.out.print("Label: " + label.label.string())
     | let attribution: SyntaxAttribution val =>
@@ -45,6 +47,8 @@ actor TestSyntaxCoordinator
       env.out.print("Print: " + print_string.trim(0, print_string.size() - 2))
     | let goto: SyntaxGoto val =>
       env.out.print("Go to: " + goto.label.string())
+    | let goto: SyntaxCompilerGoto val =>
+      env.out.print("Compiler go to: " + goto.label)
     | let ifbody: SyntaxIf val =>
       let comparator: String =
         match ifbody.comparator
@@ -57,6 +61,18 @@ actor TestSyntaxCoordinator
         end
       env.out.print("If: //TODO " + comparator + " //TODO -> "
         + ifbody.label.string())
+    | let ifbody: SyntaxCompilerIf val =>
+      let comparator: String =
+        match ifbody.comparator
+        | SyntaxEqualTo => "eq"
+        | SyntaxDifferent => "ne"
+        | SyntaxGreaterThan => "gt"
+        | SyntaxLesserThan => "lt"
+        | SyntaxGreaterThanOrEqualTo => "ge"
+        | SyntaxLesserThanOrEqualTo => "le"
+        end
+      env.out.print("If: //TODO " + comparator + " //TODO -> "
+        + ifbody.label)
     | let dim: SyntaxDim val =>
       let dim_string: String iso = recover String end
       for d in dim.dimensions.values() do
@@ -74,7 +90,6 @@ actor TestSyntaxCoordinator
       env.out.print("Return")
     | let remark: SyntaxRemark val =>
       env.out.print("Remark: " + remark.remark)
-    // else // TODO
     end
 
   be pass_error(pass: Pass, err: String = "Unknown error") =>

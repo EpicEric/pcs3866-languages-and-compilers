@@ -657,6 +657,27 @@ class ParserStructuredAutomaton
           automaton.push((AutomatonData, 1))
         else this.apply(token')? end
 
+      // Goto
+      | (AutomatonGoto, 1) =>
+        _expect_token_category(token', TokenIdentifier)?
+        if not MatchStrings(token'.data, "TO") then
+          _invalid_token(state._1, state._2, token')?
+        end
+        automaton.push((AutomatonGoto, 2))
+      | (AutomatonGoto, 2) =>
+        _expect_token_category(token', TokenNumber)?
+        let label: U32 = try
+          token'.data.u32()?
+        else
+          _pass_error(
+            "GOTO label '"
+              + token'.data
+              + "' is not an integer",
+            token'.line, token'.column)?
+          error
+        end
+        pass.callback(recover SyntaxGoto(label) end)
+
       // For
       | (AutomatonFor, 1) =>
         automaton.push((AutomatonFor, 2))
@@ -744,6 +765,46 @@ class ParserStructuredAutomaton
           label,
           for_max = recover SyntaxExpressionNumber(1) end,
           for_step = recover SyntaxExpressionNumber(1) end)?
+        this.apply(token')?
+
+      // Next
+      | (AutomatonNext, 1) =>
+        _expect_token_category(token', TokenIdentifier)?
+        for_variable = token'.data
+        // Variable should be letter [ digit ]
+        if
+          (for_variable.size() > 2)
+            or (not(_is_letter(for_variable(0)?)))
+            or ((for_variable.size() == 2)
+              and not(_is_letter(for_variable(1)?)))
+        then
+          _invalid_token(state._1, state._2, token')?
+        end
+        if not(pass.for_map.contains(for_variable)) then
+          _pass_error(
+            "Variable '" + for_variable + "' cannot be looped without FOR",
+            token'.line, token'.column)?
+        end
+        pass.syntax_next(for_variable)?
+
+      // Gosub
+      | (AutomatonGosub, 1) =>
+        _expect_token_category(token', TokenNumber)?
+        let label: U32 = try
+          token'.data.u32()?
+        else
+          _pass_error(
+            "GOSUB label '"
+              + token'.data
+              + "' is not an integer",
+            token'.line, token'.column)?
+          error
+        end
+        pass.callback(recover SyntaxSubroutine(label) end)
+
+      // Return
+      | (AutomatonReturn, 1) =>
+        pass.callback(SyntaxReturn)
         this.apply(token')?
 
       // Remark

@@ -23,10 +23,16 @@ actor TestSyntaxCoordinator
       env.out.print("Syntax is ok")
     | let label: SyntaxLabel val =>
       env.out.print("Label: " + label.label.string())
-    | let remark: SyntaxRemark val =>
-      env.out.print("Remark: " + remark.remark)
     | let attribution: SyntaxAttribution val =>
       env.out.print("Attribution: " + attribution.variable.name + " = //TODO")
+    | let goto: SyntaxGoto val =>
+      env.out.print("Go to: " + goto.label.string())
+    | let gosub: SyntaxSubroutine val =>
+      env.out.print("Subroutine: " + gosub.subroutine.string())
+    | SyntaxReturn =>
+      env.out.print("Return")
+    | let remark: SyntaxRemark val =>
+      env.out.print("Remark: " + remark.remark)
     // else // TODO
     end
 

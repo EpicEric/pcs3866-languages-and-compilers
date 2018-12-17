@@ -632,6 +632,31 @@ class ParserStructuredAutomaton
         | let unop': SyntaxUnaryOperatorPrimitive =>
           exp = recover SyntaxExpressionUnary(consume exp, unop') end
         end
+        // Remove open braces, if applicable
+        if
+          (exp_binop.size() > 0)
+            and (exp_binop(exp_binop.size() - 1)? is None)
+        then exp_binop.pop()? end
+        // Apply stacked operators
+        while
+          (exp_binop.size() > 0)
+            and (exp_binop(exp_binop.size() - 1)? isnt None)
+        do
+          let binop: SyntaxBinaryOperator =
+            exp_binop.pop()? as SyntaxBinaryOperator
+          exp =
+            try
+              let left_exp: SyntaxExpression iso = exp_list.pop()?
+              recover SyntaxExpressionBinary(
+                consume left_exp, consume exp, binop) end
+            else
+              _pass_error(
+                "Insufficient operands in closed braces expression",
+                token'.line,
+                token'.column)?
+              error
+            end
+        end
         exp_list.push(consume exp)
       | (AutomatonEb, 3) =>
         this.apply(token')?

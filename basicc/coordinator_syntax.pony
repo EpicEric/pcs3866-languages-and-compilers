@@ -77,33 +77,33 @@ actor TestSyntaxCoordinator
       token_count = token_count + 1
       let comparator: String =
         match ifbody.comparator
-        | SyntaxEqualTo => "eq"
-        | SyntaxDifferent => "ne"
-        | SyntaxGreaterThan => "gt"
-        | SyntaxLesserThan => "lt"
-        | SyntaxGreaterThanOrEqualTo => "ge"
-        | SyntaxLesserThanOrEqualTo => "le"
+        | SyntaxEqualTo => "=="
+        | SyntaxDifferent => "!="
+        | SyntaxGreaterThan => ">"
+        | SyntaxLesserThan => "<"
+        | SyntaxGreaterThanOrEqualTo => ">="
+        | SyntaxLesserThanOrEqualTo => "<="
         end
       token_list.push(_format_token(
         "If",
         _exp_to_string(ifbody.left_expression) + " " + comparator + " "
-          + _exp_to_string(ifbody.right_expression) + " -> "
+          + _exp_to_string(ifbody.right_expression) + " THEN "
           + ifbody.label.string()))
     | let ifbody: SyntaxCompilerIf val =>
       token_count = token_count + 1
       let comparator: String =
         match ifbody.comparator
-        | SyntaxEqualTo => "eq"
-        | SyntaxDifferent => "ne"
-        | SyntaxGreaterThan => "gt"
-        | SyntaxLesserThan => "lt"
-        | SyntaxGreaterThanOrEqualTo => "ge"
-        | SyntaxLesserThanOrEqualTo => "le"
+        | SyntaxEqualTo => "=="
+        | SyntaxDifferent => "!="
+        | SyntaxGreaterThan => ">"
+        | SyntaxLesserThan => "<"
+        | SyntaxGreaterThanOrEqualTo => ">="
+        | SyntaxLesserThanOrEqualTo => "<="
         end
       token_list.push(_format_token(
         "Compiler if", 
         _exp_to_string(ifbody.left_expression) + " " + comparator + " "
-          + _exp_to_string(ifbody.right_expression) + " -> "
+          + _exp_to_string(ifbody.right_expression) + " THEN "
           + ifbody.label))
     | let dim: SyntaxDim val =>
       token_count = token_count + 1

@@ -1,6 +1,6 @@
 # pcs3866-languages-and-compilers
 
-A Darthmouth BASIC compiler, written in the Pony language. Ponyc 0.25.0 is required.
+A Darthmouth BASIC compiler, written in the Pony language. Ponyc 0.28.0 is required.
 
 Wirth notation of the language:
 

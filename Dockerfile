@@ -1,4 +1,4 @@
-FROM ponylang/ponyc:0.25.0
+FROM ponylang/ponyc:0.28.0
 COPY basicc basicc
-RUN ponyc -o /bin basicc
+RUN ponyc --debug -o /bin basicc
 CMD ["basicc", "--help"]

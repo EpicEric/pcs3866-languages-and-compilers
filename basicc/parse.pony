@@ -1196,15 +1196,16 @@ class ParserStructuredAutomaton
     else false end
 
   fun ref _parse_float(token: TokenEventWord val): F32 ? =>
-    let float = token.data.f32()
-    if
-      (float == 0)
-        and (not(MatchStrings(token.data, "0")))
-        and (not(MatchStrings(token.data, ".0")))
-        and (not(MatchStrings(token.data, "0.0")))
-    then _pass_error(
-      "Could not parse '" + token.data + "' as float. If using a zero value, "
-        + "change '" + token.data + "' to '0' in your code.",
-      token.line,
-      token.column)? end
+    let float =
+      try
+        token.data.f32()?
+      else
+        _pass_error(
+          "Could not parse '" + token.data + "' as float. If using a zero value, "
+            + "change '" + token.data + "' to '0' in your code.",
+          token.line,
+          token.column)?
+        0
+      end
     float
+

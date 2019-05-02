@@ -1201,8 +1201,7 @@ class ParserStructuredAutomaton
         token.data.f32()?
       else
         _pass_error(
-          "Could not parse '" + token.data + "' as float. If using a zero value, "
-            + "change '" + token.data + "' to '0' in your code.",
+          "Could not parse '" + token.data + "' as float.",
           token.line,
           token.column)?
         0
